@@ -121,7 +121,9 @@ class Generator(
 
                 } else {
                     // Not a FK
-                    if (this in tableModel.primaryKey) {
+                    if (converter != null) {
+                        converter.targetType
+                    } else if (this in tableModel.primaryKey) {
                         // column part of PK
                         if (tableModel.primaryKey is PrimaryKey.Simple) {
                             // Column is the sole PK.
@@ -336,23 +338,50 @@ class Generator(
             }
 
         } else {
+
             // Not a FK
-            val typeFun = exposedTypeFun(columnName)
-            initializer.add(typeFun)
-            if (autoIncrementing) initializer.add(".autoIncrement()")
-            default?.let { initializer.add(".default(%L)", it) }
-            if (type.isNullable) initializer.add(".nullable()")
-            if (this in tableModel.primaryKey) {
-                // column part of PK
-                initializer.add(".entityId()")
-                if (tableModel.primaryKey is PrimaryKey.Simple) {
-                    // Column is the sole PK.
-                    tableModel.entityIdType()
+            if (converter != null) {
+                val typeFun = exposedTypeFun(columnName, converter.targetType)
+                initializer.add(typeFun)
+                
+                val converterInstance = CodeBlock.of("%T()", converter.converterClass)
+                val targetTypeNonNull = converter.targetType.copy(nullable = false)
+                val entityTypeNonNull = type.copy(nullable = false)
+                
+                if (type.isNullable) {
+                    // For nullable entity types, make the base column nullable first, then transform
+                    initializer.add(".nullable()")
+                    initializer.add(".transform({ it: %T? -> %L.convertToEntityAttribute(it) }, { it: %T? -> %L.convertToDatabaseColumn(it) })", 
+                        targetTypeNonNull, converterInstance, entityTypeNonNull, converterInstance)
                 } else {
-                    // Column is part of a composite PK.
-                    EntityID::class.asTypeName().parameterizedBy(type)
+                    // For non-nullable entity types, transform without nullable
+                    // But if converter target type is nullable, we need to handle it in transform
+                    if (converter.targetType.isNullable) {
+                        initializer.add(".transform({ it: %T? -> %L.convertToEntityAttribute(it) }, { %L.convertToDatabaseColumn(it) })", 
+                            targetTypeNonNull, converterInstance, converterInstance)
+                    } else {
+                        initializer.add(".transform({ %L.convertToEntityAttribute(it) }, { %L.convertToDatabaseColumn(it) })", converterInstance, converterInstance)
+                    }
                 }
-            } else type
+                type
+            } else {
+                val typeFun = exposedTypeFun(columnName)
+                initializer.add(typeFun)
+                if (autoIncrementing) initializer.add(".autoIncrement()")
+                default?.let { initializer.add(".default(%L)", it) }
+                if (type.isNullable) initializer.add(".nullable()")
+                if (this in tableModel.primaryKey) {
+                    // column part of PK
+                    initializer.add(".entityId()")
+                    if (tableModel.primaryKey is PrimaryKey.Simple) {
+                        // Column is the sole PK.
+                        tableModel.entityIdType()
+                    } else {
+                        // Column is part of a composite PK.
+                        EntityID::class.asTypeName().parameterizedBy(type)
+                    }
+                } else type
+            }
         }
 
         val propType = Column::class.asTypeName().parameterizedBy(colType)
@@ -363,7 +392,7 @@ class Generator(
         return spec.initializer(initializer.build()).build()
     }
 
-    private fun ColumnModel.exposedTypeFun(colName: String): CodeBlock {
+    private fun ColumnModel.exposedTypeFun(colName: String, overrideType: TypeName? = null): CodeBlock {
         val kotlinDateTimePackage = "org.jetbrains.exposed.sql.kotlin.datetime"
         fun makeBuiltinCode(name: String): CodeBlock {
             return CodeBlock.of("%N(%S)", MemberName(Table::class.asClassName(), name), colName)
@@ -402,7 +431,7 @@ class Generator(
                 jsonFormatAccessors[typeAttr.formatName] ?: throw ProcessorException("Could not find json format with name ${typeAttr.formatName}. Please define it with @JsonFormat.", declaration)
             )
         }
-        val nonNullType = type.copy(nullable = false)
+        val nonNullType = (overrideType ?: type).copy(nullable = false)
 
         val colTypeAttrs = attrs.filterIsInstance<FieldAttrs.ColType>()
 
