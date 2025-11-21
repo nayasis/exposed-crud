@@ -96,7 +96,8 @@ data class ColumnModel(
     val autoIncrementing: Boolean,
     val default: CodeBlock?,
     val foreignKey: FKInfo?,
-    val attrs: List<FieldAttrs>
+    val attrs: List<FieldAttrs>,
+    val converter: ConverterInfo? = null
 ) {
     override fun toString(): String {
         return "$nameInDsl: $type"
@@ -159,3 +160,5 @@ sealed class ReferenceInfo(open val related: TypeName) {
 }
 
 data class AnnotationInfo(val cls: ClassName, val params: List<Any?>)
+
+data class ConverterInfo(val converterClass: TypeName, val targetType: TypeName)

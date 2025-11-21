@@ -1,11 +1,37 @@
 package com.dshatz.exposed_crud
 
-import com.dshatz.exposed_crud.models.*
+import com.dshatz.exposed_crud.models.Category
+import com.dshatz.exposed_crud.models.CategoryTable
+import com.dshatz.exposed_crud.models.CategoryTranslations
+import com.dshatz.exposed_crud.models.CategoryTranslationsTable
+import com.dshatz.exposed_crud.models.Color
+import com.dshatz.exposed_crud.models.ConvertedEntity
+import com.dshatz.exposed_crud.models.ConvertedEntityTable
+import com.dshatz.exposed_crud.models.Director
+import com.dshatz.exposed_crud.models.DirectorTable
+import com.dshatz.exposed_crud.models.Language
+import com.dshatz.exposed_crud.models.LanguageTable
+import com.dshatz.exposed_crud.models.Movie
+import com.dshatz.exposed_crud.models.MovieTable
+import com.dshatz.exposed_crud.models.createWithRelated
+import com.dshatz.exposed_crud.models.deleteById
+import com.dshatz.exposed_crud.models.findById
+import com.dshatz.exposed_crud.models.repo
 import kotlinx.datetime.Clock
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.StdOutSqlLogger
+import org.jetbrains.exposed.sql.addLogger
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
-import kotlin.test.*
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFails
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class TestDB {
 
@@ -13,11 +39,13 @@ class TestDB {
 
     @BeforeTest
     fun init() {
-        db = Database.connect("jdbc:sqlite:memory:?foreign_keys=on", "org.sqlite.JDBC")
+        db = Database.connect("jdbc:sqlite:memory:test_db_${java.util.UUID.randomUUID()}?foreign_keys=on", "org.sqlite.JDBC")
         transaction(db) {
             addLogger(StdOutSqlLogger)
-            SchemaUtils.drop(DirectorTable, MovieTable, LanguageTable, CategoryTable, CategoryTranslationsTable)
-            SchemaUtils.create(DirectorTable, MovieTable, LanguageTable, CategoryTable, CategoryTranslationsTable)
+            listOf( DirectorTable, MovieTable, LanguageTable, CategoryTable, CategoryTranslationsTable, ConvertedEntityTable ).forEach {
+                SchemaUtils.drop(it)
+                SchemaUtils.create(it)
+            }
         }
         transaction(db) {
             println(SchemaUtils.listTables())
@@ -244,6 +272,37 @@ class TestDB {
         DirectorTable.repo.apply {
             create(Director(name = "Alfred"))
             assertFails { create(Director(name = "Alfred")) }
+        }
+    }
+
+
+    @Test
+    fun `test converted entity with both nullable and non-nullable fields`() {
+        transaction(db) {
+            val color = Color(255, 23, 7)
+            val nullableColor = Color(128, 64, 32)
+            val inserted = ConvertedEntityTable.repo.createReturning(
+                ConvertedEntity(color = color, nullableColor = nullableColor)
+            )
+            val found = ConvertedEntityTable.repo.findById(inserted.id)
+
+            assertNotNull(found)
+            assertEquals(color, found.color)
+            assertNotNull(found.nullableColor)
+            assertEquals(nullableColor, found.nullableColor)
+        }
+    }
+
+    @Test
+    fun `test converted entity with null nullable field`() {
+        transaction(db) {
+            val color = Color(255, 23, 7)
+            val inserted = ConvertedEntityTable.repo.createReturning( ConvertedEntity(color = color, nullableColor = null) )
+            val found = ConvertedEntityTable.repo.findById(inserted.id)
+
+            assertNotNull(found)
+            assertEquals(color, found.color)
+            assertNull(found.nullableColor)
         }
     }
 

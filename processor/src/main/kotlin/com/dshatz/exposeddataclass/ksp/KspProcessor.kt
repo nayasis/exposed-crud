@@ -1,6 +1,7 @@
 package com.dshatz.exposeddataclass.ksp
 
 import com.dshatz.exposed_crud.*
+import com.dshatz.exposed_crud.interfaces.AttributeConverter
 import com.dshatz.exposeddataclass.*
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
@@ -101,10 +102,30 @@ class KspProcessor(
                 FKInfo(remoteType, remoteColumn)
             }
 
-            val isStringProp = declaration.type.toTypeName().copy(nullable = false) == STRING
+            val autoIncrement = declaration.getAnnotation(Id::class)?.getArgumentAs<Boolean>() == true
+
+            val converter = declaration.getAnnotation(Convert::class)?.let {
+                val converterClass = it.getArgumentAs<KSType>(0)!!
+                val converterDeclaration = converterClass.declaration as KSClassDeclaration
+                val attributeConverterQualifiedName = AttributeConverter::class.qualifiedName
+                val attributeConverterType = converterDeclaration.superTypes.firstOrNull { superType ->
+                    try {
+                        val resolved = superType.resolve()
+                        resolved.declaration.qualifiedName?.asString() == attributeConverterQualifiedName
+                    } catch (e: Exception) {
+                        false
+                    }
+                }?.resolve() ?: throw ProcessorException("Could not find AttributeConverter supertype for converter", declaration)
+                
+                val targetType = attributeConverterType.arguments[1].type!!.resolve().toTypeName()
+                ConverterInfo(converterClass.toTypeName(), targetType)
+            }
+
+            val columnType = converter?.targetType ?: declaration.type.toTypeName()
+            val isStringProp = columnType.copy(nullable = false) == STRING
             val textProps = listOf(Collate::class, Varchar::class, Text::class, MediumText::class, LargeText::class).mapNotNull {
                 declaration.getAnnotation(it)?.also {
-                    if (!isStringProp) throw ProcessorException(it.annotationType.toTypeName().toString() + " can only be used on a String property.", it)
+                    if (!isStringProp) throw ProcessorException(it.annotationType.toTypeName().toString() + " can only be used on a String property or a property with a String converter target type.", it)
                 }
             }
             val otherProps = listOf(Json::class, Jsonb::class).mapNotNull {
@@ -130,9 +151,6 @@ class KspProcessor(
                 }
             }
 
-            val autoIncrement = declaration.getAnnotation(Id::class)?.getArgumentAs<Boolean>() == true
-
-
             return ColumnModel(
                 declaration = declaration,
                 nameInEntity = name,
@@ -142,7 +160,8 @@ class KspProcessor(
                 autoIncrementing = autoIncrement,
                 default = default,
                 foreignKey = foreignKey,
-                attrs = props + otherProps
+                attrs = props + otherProps,
+                converter = converter
             ).also {
                 val uniqueIndexName = declaration.getAnnotation(Unique::class)?.getArgumentAs<String>()
                 if (uniqueIndexName != null) {
