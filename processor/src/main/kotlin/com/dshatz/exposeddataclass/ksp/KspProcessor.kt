@@ -80,6 +80,37 @@ class KspProcessor(
 
         val referenceProps = props.filter { it.getAnnotation(References::class) != null }
         val backReferenceProps = props.filter { it.getAnnotation(BackReference::class) != null }
+        
+        val constructorParameters = entityClass.primaryConstructor?.parameters
+            ?.associate { it.name?.asString() to it.hasDefault } ?: emptyMap()
+
+        fun KSPropertyDeclaration.isReferenceProp() =
+            this in referenceProps || this in backReferenceProps
+
+        fun KSPropertyDeclaration.hasTransientMarker() =
+            hasTransientAnnotation() || getter.hasTransientAnnotation() || setter.hasTransientAnnotation()
+
+        fun KSPropertyDeclaration.validateTransientConstructorParam() {
+            val constructorDefault = constructorParameters[getPropName()] ?: return
+            if (!constructorDefault && !type.toTypeName().isNullable) {
+                throw ProcessorException(
+                    "@Transient property '${getPropName()}' must be nullable or declare a default value in the constructor.",
+                    this
+                )
+            }
+        }
+
+        val ignoredProps = props.filter { prop ->
+            if (prop.isReferenceProp()) return@filter false
+            when {
+                prop.hasTransientMarker() -> {
+                    prop.validateTransientConstructorParam()
+                    true
+                }
+                !prop.hasBackingField -> true
+                else -> false
+            }
+        }
 
         val annotations = entityClass.annotations
             .filterNot { it.annotationType.toTypeName() == Entity::class.asTypeName() }
@@ -173,7 +204,7 @@ class KspProcessor(
             }
         }
 
-        val columns = (props - referenceProps - backReferenceProps).associateWith { declaration ->
+        val columns = (props - ignoredProps - referenceProps - backReferenceProps).associateWith { declaration ->
             computeProp(declaration)
         }
 
@@ -221,6 +252,14 @@ class KspProcessor(
             backReferences = backRefColumns
         )
     }
+
+    private fun KSAnnotated?.hasTransientAnnotation(): Boolean =
+        this?.annotations?.any {
+            when (it.annotationType.resolve().declaration.qualifiedName?.asString()) {
+                "kotlin.jvm.Transient", "kotlinx.serialization.Transient" -> true
+                else -> false
+            }
+        } == true
 
     private fun validate(models: Iterable<EntityModel>) {
         models.forEach { table ->

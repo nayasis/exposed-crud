@@ -9,6 +9,7 @@ import com.dshatz.exposed_crud.models.ConvertedEntity
 import com.dshatz.exposed_crud.models.ConvertedEntityTable
 import com.dshatz.exposed_crud.models.Director
 import com.dshatz.exposed_crud.models.DirectorTable
+import com.dshatz.exposed_crud.models.IgnoredFieldEntityTable
 import com.dshatz.exposed_crud.models.Language
 import com.dshatz.exposed_crud.models.LanguageTable
 import com.dshatz.exposed_crud.models.Movie
@@ -310,6 +311,14 @@ class TestDB {
             assertNotNull(found)
             assertEquals(color, found.color)
             assertNull(found.nullableColor)
+        }
+    }
+
+    @Test
+    fun `ignored field entity table only has id and name columns`() {
+        transaction(db) {
+            val columnNames = IgnoredFieldEntityTable.columns.map { it.name }
+            assertEquals(listOf("id", "name"), columnNames)
         }
     }
 
