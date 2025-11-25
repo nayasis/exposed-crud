@@ -13,6 +13,7 @@ dependencies {
     implementation(libs.exposed.jdbc)
     implementation(libs.exposed.dao)
     implementation(libs.exposed.kotlin.datetime)
+    implementation(libs.exposed.java.time)
     implementation(libs.exposed.json)
     implementation(libs.serial)
     implementation(project(":annotations"))

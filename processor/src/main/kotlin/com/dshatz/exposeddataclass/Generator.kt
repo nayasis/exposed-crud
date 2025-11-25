@@ -404,6 +404,13 @@ class Generator(
                 colName
             )
         }
+        fun makeJavaTimeCode(name: String): CodeBlock {
+            return CodeBlock.of(
+                "%M(%S)",
+                MemberName("org.jetbrains.exposed.sql.javatime", name, isExtension = true),
+                colName
+            )
+        }
         fun makeTextCode(type: FieldAttrs.ColType.String.Text, collate: String?): CodeBlock {
             return CodeBlock.of(
                 "%N(%S, %L, %L)",
@@ -466,6 +473,11 @@ class Generator(
                     "kotlinx.datetime.LocalDate" -> makeKotlinDatetimeCode("date")
                     "kotlinx.datetime.LocalDateTime" -> makeKotlinDatetimeCode("datetime")
                     "kotlinx.datetime.Instant" -> makeKotlinDatetimeCode("timestamp")
+                    "kotlinx.datetime.LocalTime" -> makeKotlinDatetimeCode("time")
+                    "java.time.LocalDate" -> makeJavaTimeCode("date")
+                    "java.time.LocalDateTime" -> makeJavaTimeCode("datetime")
+                    "java.time.Instant" -> makeJavaTimeCode("timestamp")
+                    "java.time.LocalTime" -> makeJavaTimeCode("time")
                     "java.math.BigDecimal" -> makeBuiltinCode("decimal")
                     "java.util.UUID" -> makeBuiltinCode("uuid")
                     else -> {

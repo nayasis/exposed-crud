@@ -42,7 +42,14 @@ class TestDB {
         db = Database.connect("jdbc:sqlite:memory:test_db_${java.util.UUID.randomUUID()}?foreign_keys=on", "org.sqlite.JDBC")
         transaction(db) {
             addLogger(StdOutSqlLogger)
-            listOf( DirectorTable, MovieTable, LanguageTable, CategoryTable, CategoryTranslationsTable, ConvertedEntityTable ).forEach {
+            listOf(
+                DirectorTable,
+                MovieTable,
+                LanguageTable,
+                CategoryTable,
+                CategoryTranslationsTable,
+                ConvertedEntityTable,
+            ).forEach {
                 SchemaUtils.drop(it)
                 SchemaUtils.create(it)
             }
