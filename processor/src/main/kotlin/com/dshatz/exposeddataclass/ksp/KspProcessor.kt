@@ -71,7 +71,12 @@ class KspProcessor(
     @Throws(ProcessorException::class)
     private fun processEntity(entityClass: KSClassDeclaration): EntityModel {
         val tableAnnotation = entityClass.getAnnotation(Table::class)
-        val tableName = tableAnnotation?.getArgumentAs<String>() ?: entityClass.toClassName().simpleName
+        val tableAnnotationName = tableAnnotation?.getArgumentAs<String>()?.takeUnless { it.isNullOrBlank() }
+        val entityAnnotation = entityClass.getAnnotation(Entity::class)
+        val entityAnnotationName = entityAnnotation?.getArgumentAs<String>()?.takeUnless { it.isNullOrBlank() }
+        val tableName = tableAnnotationName
+            ?: entityAnnotationName
+            ?: entityClass.toClassName().simpleName
         val props = entityClass.getAllProperties()
         val idProps = entityClass.findPropsWithAnnotation(Id::class)
 
