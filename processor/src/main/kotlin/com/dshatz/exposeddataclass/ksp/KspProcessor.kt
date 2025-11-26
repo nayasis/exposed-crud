@@ -74,9 +74,7 @@ class KspProcessor(
         val tableAnnotationName = tableAnnotation?.getArgumentAs<String>()?.takeUnless { it.isNullOrBlank() }
         val entityAnnotation = entityClass.getAnnotation(Entity::class)
         val entityAnnotationName = entityAnnotation?.getArgumentAs<String>()?.takeUnless { it.isNullOrBlank() }
-        val tableName = tableAnnotationName
-            ?: entityAnnotationName
-            ?: entityClass.toClassName().simpleName
+        val tableName = tableAnnotationName ?: entityAnnotationName ?: entityClass.toClassName().simpleName
         val props = entityClass.getAllProperties()
         val idProps = entityClass.findPropsWithAnnotation(Id::class)
 
