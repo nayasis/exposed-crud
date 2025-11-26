@@ -58,6 +58,7 @@ class Generator(
             tableDef.addFunction(generateUpdateApplicator(tableModel, true))
             tableDef.addFunction(generateUpdateApplicator(tableModel, false))
             tableDef.addFunction(generatePKMaker(tableModel))
+            tableDef.addFunction(generateSetId(tableModel))
             tableDef.addTableSuperclass(tableModel)
             if (tableModel.uniques.isNotEmpty()) {
                 tableDef.addInitializerBlock(CodeBlock.builder().apply {
@@ -222,6 +223,32 @@ class Generator(
             }
         }
         return spec.addCode(CodeBlock.of("return %T(%L, %T)", model.entityIdType(), code, model.tableClass)).build()
+    }
+
+    private fun generateSetId(model: EntityModel): FunSpec {
+        val spec = FunSpec.builder("setId")
+            .addModifiers(KModifier.OVERRIDE)
+            .returns(model.originalClassName)
+            .addParameter(ParameterSpec("data", model.originalClassName))
+            .addParameter(ParameterSpec("id", model.idType()))
+
+        return when (model.primaryKey) {
+            is PrimaryKey.Composite -> {
+                spec.addStatement("throw UnsupportedOperationException(%S)", 
+                    "setId is not supported for composite keys")
+                    .build()
+            }
+            is PrimaryKey.Simple -> {
+                val idProp = model.primaryKey.prop
+                if (idProp.isMutable) {
+                    spec.addStatement("data.%N = id", idProp.nameInEntity)
+                    spec.addStatement("return data")
+                } else {
+                    spec.addStatement("return data.copy(%N = id)", idProp.nameInEntity)
+                }
+                spec.build()
+            }
+        }
     }
 
     /**

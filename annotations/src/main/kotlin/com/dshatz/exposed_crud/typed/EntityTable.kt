@@ -15,4 +15,5 @@ interface IEntityTable<T, ID: Any> {
     abstract fun write(update: UpdateBuilder<Number>, data: T)
     abstract fun writeExceptAutoIncrementing(update: UpdateBuilder<Number>, data: T)
     abstract fun makePK(data: T): EntityID<ID>
+    abstract fun setId(data: T, id: ID): T
 }

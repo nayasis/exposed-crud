@@ -195,7 +195,8 @@ class KspProcessor(
                 default = default,
                 foreignKey = foreignKey,
                 attrs = props + otherProps,
-                converter = converter
+                converter = converter,
+                isMutable = declaration.isMutable,
             ).also {
                 val uniqueIndexName = declaration.getAnnotation(Unique::class)?.getArgumentAs<String>()
                 if (uniqueIndexName != null) {
