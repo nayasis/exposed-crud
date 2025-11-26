@@ -66,7 +66,8 @@ data class EntityModel(
         private val simpleIdTypes = sequenceOf(Int::class, Long::class, UInt::class, ULong::class, UUID::class)
             .map { it.asTypeName() }.toSet()
         private val tableTypes = simpleIdTypes.associateWith {
-            ClassName("org.jetbrains.exposed.dao.id", it.simpleName + "IdTable")
+            val suffix = if (it.simpleName == "UUID") "Table" else "IdTable"
+            ClassName("org.jetbrains.exposed.dao.id", it.simpleName + suffix)
         }
 
         private val entityTypes = simpleIdTypes.associateWith {
