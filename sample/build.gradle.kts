@@ -20,4 +20,5 @@ dependencies {
     ksp(project(":processor"))
     testImplementation(kotlin("test"))
     testRuntimeOnly("org.xerial:sqlite-jdbc:3.44.1.0")
+    testRuntimeOnly("com.h2database:h2:2.2.224")
 }

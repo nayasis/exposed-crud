@@ -7,12 +7,14 @@ import com.dshatz.exposed_crud.References
 
 @Entity
 data class CategoryTranslations(
+
     @Id
     @ForeignKey(Category::class)
     val categoryId: Long,
     @Id
     @ForeignKey(Language::class)
     val languageCode: String,
+
     val translation: String,
 
     @References(Category::class, "categoryId")

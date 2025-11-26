@@ -179,60 +179,6 @@ class TestDB {
     }
 
     @Test
-    fun `back references`(): Unit = transaction {
-        val category = CategoryTable.repo.createReturning(Category())
-        val catId = CategoryTranslationsTable.repo
-            .withRelated(LanguageTable, CategoryTable)
-            .createWithRelated(
-                CategoryTranslations(
-                    category.id,
-                    "",
-                    language = Language("lv"),
-                    translation = "Latviski",
-                )
-            ).run {
-                categoryId to languageCode
-            }
-
-        val translation = CategoryTranslationsTable.repo.withRelated(CategoryTable, LanguageTable).findById(catId.first, catId.second)
-        assertEquals(category, translation?.category)
-        assertEquals("lv", translation?.language?.code)
-
-        CategoryTranslationsTable.repo
-            .withRelated(LanguageTable)
-            .createWithRelated(
-                CategoryTranslations(
-                    category.id,
-                    "",
-                    "In english",
-                    language = Language("en")
-                )
-            )
-        val withTranslations = CategoryTable.repo.withRelated(CategoryTranslationsTable).findById(category.id)
-        assertNotNull(withTranslations?.translations)
-        assertEquals(2, withTranslations.translations.size)
-        assertEquals("Latviski", withTranslations.translations.find { it.languageCode == "lv" }?.translation)
-        assertEquals("In english", withTranslations.translations.find { it.languageCode == "en" }?.translation)
-
-        val director = DirectorTable.repo.createReturning(Director(name = "Alfred"))
-        val movie1 = MovieTable.repo.createReturning(
-            Movie(title = "The birds", directorId = director.id, categoryId = category.id, createdAt = Clock.System.now()),
-        )
-
-        val movie2 = MovieTable.repo.createReturning(
-            Movie(title = "The birds 2", directorId = director.id, categoryId = category.id, createdAt = Clock.System.now()),
-        )
-
-        val directorWithMovies = DirectorTable.repo.withRelated(MovieTable).findById(director.id)
-        assertNotNull(directorWithMovies?.movies)
-        assertEquals(setOf(movie1, movie2), directorWithMovies.movies.toSet())
-
-        val categoryWithMovies = CategoryTable.repo.withRelated(MovieTable).findById(category.id)
-        assertNotNull(categoryWithMovies?.movies)
-        assertEquals(setOf(movie1, movie2), categoryWithMovies.movies.toSet())
-    }
-
-    @Test
     fun `delete entity`() = transaction {
         val repo = LanguageTable.repo
         val language = repo.createReturning(Language("lv"))

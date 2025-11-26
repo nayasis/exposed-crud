@@ -2,9 +2,26 @@ package com.dshatz.exposed_crud.typed
 
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.dao.id.LongIdTable
+import org.jetbrains.exposed.dao.id.UIntIdTable
+import org.jetbrains.exposed.dao.id.ULongIdTable
+import org.jetbrains.exposed.dao.id.UUIDTable
+import org.jetbrains.exposed.sql.ColumnSet
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.Query
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SizedIterable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.insertReturning
+import org.jetbrains.exposed.sql.mapLazy
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.InsertStatement
+import org.jetbrains.exposed.sql.update
 
 data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<ColumnSet> = emptyList()) where T: IdTable<ID>, T: IEntityTable<E, ID> {
 
@@ -53,9 +70,21 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
      * @return inserted entity.
      */
     fun createReturning(data: E): E {
-        return table.insertReturning {
-            table.writeExceptAutoIncrementing(it, data)
-        }.first().let(::toEntity)
+        return when (table) {
+            is IntIdTable, is UIntIdTable, is LongIdTable, is ULongIdTable, is UUIDTable -> {
+                val id = table.insertAndGetId {
+                    table.writeExceptAutoIncrementing(it, data)
+                }
+                @Suppress("UNCHECKED_CAST")
+                table.setId(data, id.value as ID)
+            } else -> {
+                table.insert {
+                    table.writeExceptAutoIncrementing(it, data)
+                }
+                val pk = table.makePK(data).value
+                findById(pk) ?: error("failed to retrieve inserted entity with PK: $pk")
+            }
+        }
     }
 
     /**

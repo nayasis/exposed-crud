@@ -8,13 +8,13 @@ import com.dshatz.exposed_crud.Id
 @Entity
 data class Category(
     @Id(autoGenerate = true)
-    val id: Long = -1,
+    var id: Long = -1,
     @Default("false")
-    val adult: Boolean = false,
+    var adult: Boolean = false,
 
     @BackReference(CategoryTranslations::class)
-    val translations: List<CategoryTranslations>? = null,
+    var translations: List<CategoryTranslations>? = null,
 
     @BackReference(Movie::class)
-    val movies: List<Movie>? = null
+    var movies: List<Movie>? = null
 )

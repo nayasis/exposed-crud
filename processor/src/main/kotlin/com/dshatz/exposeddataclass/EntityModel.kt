@@ -66,7 +66,8 @@ data class EntityModel(
         private val simpleIdTypes = sequenceOf(Int::class, Long::class, UInt::class, ULong::class, UUID::class)
             .map { it.asTypeName() }.toSet()
         private val tableTypes = simpleIdTypes.associateWith {
-            ClassName("org.jetbrains.exposed.dao.id", it.simpleName + "IdTable")
+            val suffix = if (it.simpleName == "UUID") "Table" else "IdTable"
+            ClassName("org.jetbrains.exposed.dao.id", it.simpleName + suffix)
         }
 
         private val entityTypes = simpleIdTypes.associateWith {
@@ -97,7 +98,8 @@ data class ColumnModel(
     val default: CodeBlock?,
     val foreignKey: FKInfo?,
     val attrs: List<FieldAttrs>,
-    val converter: ConverterInfo? = null
+    val converter: ConverterInfo? = null,
+    val isMutable: Boolean = false
 ) {
     override fun toString(): String {
         return "$nameInDsl: $type"
