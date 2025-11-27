@@ -8,7 +8,6 @@ import com.dshatz.exposed_crud.models.UIntIdEntity
 import com.dshatz.exposed_crud.models.UIntIdEntityTable
 import com.dshatz.exposed_crud.models.ULongIdEntity
 import com.dshatz.exposed_crud.models.ULongIdEntityTable
-import com.dshatz.exposed_crud.models.UUIDEntityTable
 import com.dshatz.exposed_crud.models.repo
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -47,7 +46,6 @@ class CreateReturningTest {
                 LongIdEntityTable,
                 UIntIdEntityTable,
                 ULongIdEntityTable,
-                UUIDEntityTable
             ).forEach {
                 SchemaUtils.drop(it)
                 SchemaUtils.create(it)
