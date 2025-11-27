@@ -26,6 +26,7 @@ import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.util.TimeZone
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -40,6 +41,22 @@ class TestDB {
 
     @BeforeTest
     fun init() {
+
+        /**
+         * IMPORTANT: Set JVM timezone to UTC when using SQLite with Instant/Timestamp columns
+         *
+         * 1. SQLite does not store timezone information in DATETIME/TIMESTAMP columns
+         * 2. Exposed's timestamp() converts kotlinx.datetime.Instant to java.sql.Timestamp using JVM's default timezone.
+         * 3. Without UTC timezone, the in-memory Instant and DB-stored value would differ (e.g., 9 hours in KST)
+         *
+         * Setting JVM timezone to UTC ensures:
+         *
+         * - Clock.System.now() generates UTC Instant
+         * - Exposed stores this Instant to SQLite using UTC
+         * - The in-memory Instant value matches exactly what's stored in DB
+         */
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+        
         db = Database.connect("jdbc:sqlite:memory:test_db_${java.util.UUID.randomUUID()}?foreign_keys=on", "org.sqlite.JDBC")
         transaction(db) {
             addLogger(StdOutSqlLogger)
