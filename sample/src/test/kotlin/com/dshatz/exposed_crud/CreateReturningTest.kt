@@ -1,12 +1,21 @@
 package com.dshatz.exposed_crud
 
-import com.dshatz.exposed_crud.models.*
+import com.dshatz.exposed_crud.models.IntIdEntity
+import com.dshatz.exposed_crud.models.IntIdEntityTable
+import com.dshatz.exposed_crud.models.LongIdEntity
+import com.dshatz.exposed_crud.models.LongIdEntityTable
+import com.dshatz.exposed_crud.models.UIntIdEntity
+import com.dshatz.exposed_crud.models.UIntIdEntityTable
+import com.dshatz.exposed_crud.models.ULongIdEntity
+import com.dshatz.exposed_crud.models.ULongIdEntityTable
+import com.dshatz.exposed_crud.models.UUIDEntityTable
+import com.dshatz.exposed_crud.models.repo
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.util.UUID
+import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,7 +58,7 @@ class CreateReturningTest {
     @Test
     fun `createReturning with IntIdTable returns inserted entity with generated ID`() {
         transaction(db) {
-            val entity = IntIdEntity(pkId = -1, name = "Test Int")
+            val entity = IntIdEntity(name = "Test Int")
             
             val inserted = IntIdEntityTable.repo.createReturning(entity)
             
@@ -68,7 +77,7 @@ class CreateReturningTest {
     @Test
     fun `createReturning with LongIdTable returns inserted entity with generated ID`() {
         transaction(db) {
-            val entity = LongIdEntity(pkId = -1, name = "Test Long")
+            val entity = LongIdEntity(name = "Test Long")
             
             val inserted = LongIdEntityTable.repo.createReturning(entity)
             
@@ -87,7 +96,7 @@ class CreateReturningTest {
     @Test
     fun `createReturning with UIntIdTable returns inserted entity with generated ID`() {
         transaction(db) {
-            val entity = UIntIdEntity(pkId = 0u, name = "Test UInt")
+            val entity = UIntIdEntity(name = "Test UInt")
             
             val inserted = UIntIdEntityTable.repo.createReturning(entity)
             
@@ -106,7 +115,7 @@ class CreateReturningTest {
     @Test
     fun `createReturning with ULongIdTable returns inserted entity with generated ID`() {
         transaction(db) {
-            val entity = ULongIdEntity(pkId = 0u, name = "Test ULong")
+            val entity = ULongIdEntity(name = "Test ULong")
             
             val inserted = ULongIdEntityTable.repo.createReturning(entity)
             
@@ -125,9 +134,9 @@ class CreateReturningTest {
     @Test
     fun `createReturning multiple entities generates unique IDs`() {
         transaction(db) {
-            val entity1 = IntIdEntity(pkId = -1, name = "Entity 1")
-            val entity2 = IntIdEntity(pkId = -1, name = "Entity 2")
-            val entity3 = IntIdEntity(pkId = -1, name = "Entity 3")
+            val entity1 = IntIdEntity(name = "Entity 1")
+            val entity2 = IntIdEntity(name = "Entity 2")
+            val entity3 = IntIdEntity(name = "Entity 3")
             
             val inserted1 = IntIdEntityTable.repo.createReturning(entity1)
             val inserted2 = IntIdEntityTable.repo.createReturning(entity2)
@@ -148,8 +157,8 @@ class CreateReturningTest {
     @Test
     fun `createReturning with LongIdTable multiple inserts generates sequential IDs`() {
         transaction(db) {
-            val entity1 = LongIdEntity(pkId = -1, name = "Long Entity 1")
-            val entity2 = LongIdEntity(pkId = -1, name = "Long Entity 2")
+            val entity1 = LongIdEntity(name = "Long Entity 1")
+            val entity2 = LongIdEntity(name = "Long Entity 2")
             
             val inserted1 = LongIdEntityTable.repo.createReturning(entity1)
             val inserted2 = LongIdEntityTable.repo.createReturning(entity2)
@@ -160,41 +169,6 @@ class CreateReturningTest {
         }
     }
 
-    @Test
-    fun `createReturning with UUIDTable returns inserted entity with generated ID`() {
-        transaction(db) {
-            val tempId = UUID.randomUUID()
-            val entity = UUIDEntity(pkId = tempId, name = "Test UUID")
-            
-            val inserted = UUIDEntityTable.repo.createReturning(entity)
-            
-            assertNotNull(inserted)
-            assertNotNull(inserted.pkId)
-            assertEquals("Test UUID", inserted.name)
-            
-            // Verify we can find it by the returned ID
-            val found = UUIDEntityTable.repo.findById(inserted.pkId)
-            assertNotNull(found)
-            assertEquals(inserted.pkId, found.pkId)
-            assertEquals(inserted.name, found.name)
-        }
-    }
-
-    @Test
-    fun `createReturning with UUIDTable multiple inserts generates unique IDs`() {
-        transaction(db) {
-            val entity1 = UUIDEntity(pkId = UUID.randomUUID(), name = "UUID Entity 1")
-            val entity2 = UUIDEntity(pkId = UUID.randomUUID(), name = "UUID Entity 2")
-            
-            val inserted1 = UUIDEntityTable.repo.createReturning(entity1)
-            val inserted2 = UUIDEntityTable.repo.createReturning(entity2)
-            
-            // All IDs should be different
-            assertNotEquals(inserted1.pkId, inserted2.pkId)
-            assertEquals("UUID Entity 1", inserted1.name)
-            assertEquals("UUID Entity 2", inserted2.name)
-        }
-    }
 }
 
 

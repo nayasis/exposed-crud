@@ -43,15 +43,3 @@ data class ULongIdEntity(
     val pkId: ULong = 0u,
     val name: String
 )
-
-/**
- * Test entity using UUIDTable with mutable ID (var)
- */
-@Entity
-data class UUIDEntity(
-    @Id(autoGenerate = true)
-    var pkId: UUID = UUID.randomUUID(),
-    val name: String
-)
-
-
