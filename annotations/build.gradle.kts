@@ -6,7 +6,12 @@ plugins {
 }
 
 group = "com.dshatz.exposed-crud"
-version = project.findProperty("version") as? String ?: "0.1.0-SNAPSHOT1"
+version = when {
+    project.hasProperty("version") && project.property("version").let { it != "" && it != "unspecified" } -> {
+        project.property("version") as String
+    }
+    else -> "0.1.0-SNAPSHOT"
+}
 
 kotlin {
     jvmToolchain(17)
@@ -18,8 +23,10 @@ dependencies {
 
 mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
-    signAllPublications()
-    coordinates(project.group.toString(), "lib", project.version.toString())
+    if(listOf("publishToMavenLocal","publishMavenPublicationToMavenLocal").none{gradle.startParameter.taskNames.contains(it)}) {
+        signAllPublications()
+    }
+    coordinates(project.group.toString(), "lib")
     pom {
         name = "Exposed-CRUD"
         description = "Exposed CRUD repository generator."
