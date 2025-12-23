@@ -26,13 +26,11 @@ import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFails
-import kotlin.test.assertNotEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 
 class TestDB {
 
@@ -61,12 +59,14 @@ class TestDB {
     }
 
     @Test
-    fun `test insert`() = transaction {
-        val director = Director(0, "Alfred")
-        val inserted = DirectorTable.repo.createReturning(director.copy(oldDirector = director))
-        val found = DirectorTable.repo.select().where(DirectorTable.name eq "Alfred").first()
-        assertEquals("Alfred", found.name)
-        assertEquals(inserted, found)
+    fun `test insert`() {
+        transaction(db) {
+            val director = Director(0, "Alfred")
+            val inserted = DirectorTable.repo.createReturning(director.copy(oldDirector = director))
+            val found = DirectorTable.repo.select().where(DirectorTable.name eq "Alfred").first()
+            found.name shouldBe "Alfred"
+            found shouldBe inserted
+        }
     }
 
     @Test
@@ -76,156 +76,180 @@ class TestDB {
                 it[name] = "Alfred"
             }
             val all = DirectorTable.repo.selectAll()
-            assertEquals(1, all.size)
-            assertEquals("Alfred", all.first().name)
+            all.size shouldBe 1
+            all.first().name shouldBe "Alfred"
         }
     }
 
     @Test
-    fun `typed insert`() = transaction {
-        DirectorTable.repo.create(Director(name = "Bob"))
-        assertEquals("Bob", DirectorTable.repo.selectAll().first().name)
+    fun `typed insert`() {
+        transaction(db) {
+            DirectorTable.repo.create(Director(name = "Bob"))
+            DirectorTable.repo.selectAll().first().name shouldBe "Bob"
+        }
     }
 
     @Test
-    fun `update custom where`() = transaction {
-        DirectorTable.repo.create(Director(name = "Bob"))
-        val id = DirectorTable.repo.selectAll().find { it.name == "Bob" }!!.id
-        DirectorTable.repo.update({ DirectorTable.id eq id }, Director(name = "Marley"))
+    fun `update custom where`() {
+        transaction(db) {
+            DirectorTable.repo.create(Director(name = "Bob"))
+            val id = DirectorTable.repo.selectAll().find { it.name == "Bob" }!!.id
+            DirectorTable.repo.update({ DirectorTable.id eq id }, Director(name = "Marley"))
 
-        assertEquals("Marley", DirectorTable.repo.selectAll().first().name)
+            DirectorTable.repo.selectAll().first().name shouldBe "Marley"
+        }
     }
 
     @Test
-    fun `update by simple primary key`() = transaction {
-        val id = DirectorTable.repo.createReturning(Director(name = "Bob")).id
-        DirectorTable.repo.update(Director(id, "Marley"))
-        assertEquals("Marley", DirectorTable.repo.selectAll().first().name)
+    fun `update by simple primary key`() {
+        transaction(db) {
+            val id = DirectorTable.repo.createReturning(Director(name = "Bob")).id
+            DirectorTable.repo.update(Director(id, "Marley"))
+            DirectorTable.repo.selectAll().first().name shouldBe "Marley"
+        }
     }
 
     @Test
-    fun `select where`() = transaction {
-        val id = DirectorTable.repo.createReturning(Director(name = "Bob")).id
-        val director = DirectorTable.repo.select().where {
-            DirectorTable.name eq "Bob"
-        }.first()
+    fun `select where`() {
+        transaction(db) {
+            val id = DirectorTable.repo.createReturning(Director(name = "Bob")).id
+            val director = DirectorTable.repo.select().where {
+                DirectorTable.name eq "Bob"
+            }.first()
 
-        assertEquals(id, director.id)
-        assertEquals("Bob", director.name)
+            director.id shouldBe id
+            director.name shouldBe "Bob"
+        }
     }
 
     @Test
-    fun `find by id`() = transaction {
-        val directorId = DirectorTable.repo.createReturning(Director(name = "Alfred")).id
+    fun `find by id`() {
+        transaction(db) {
+            val directorId = DirectorTable.repo.createReturning(Director(name = "Alfred")).id
 
-        val found = DirectorTable.repo.findById(directorId)
-        assertNotNull(found)
-        assertEquals("Alfred", found.name)
+            val found = DirectorTable.repo.findById(directorId)
+            found shouldNotBe null
+            found!!.name shouldBe "Alfred"
+        }
     }
 
     @Test
-    fun `composite ids`(): Unit = transaction {
-        val lang = "lv"
-        LanguageTable.repo.create(Language(lang))
-        val catId = CategoryTable.repo.createReturning(Category()).id
-        CategoryTranslationsTable.repo.create(
-            CategoryTranslations(
-                catId, lang, "Latviski"
-            )
-        )
-        val found = CategoryTranslationsTable.repo.findById(catId, lang)
-        assertEquals("Latviski", found?.translation)
-
-        val withTranslations = CategoryTable.repo.withRelated(CategoryTranslationsTable).findById(catId)
-        assertNotNull(withTranslations)
-    }
-
-    @Test
-    fun `foreign key with ref`(): Unit = transaction {
-        val directorId = DirectorTable.repo.createReturning(Director(name = "Alfred")).id
-        val categoryId = CategoryTable.repo.createReturning(Category()).id
-        val lv = LanguageTable.repo.insertReturning(Language("lv"))
-        println(
-            CategoryTranslationsTable.repo.createWithRelated(
+    fun `composite ids`() {
+        transaction(db) {
+            val lang = "lv"
+            LanguageTable.repo.create(Language(lang))
+            val catId = CategoryTable.repo.createReturning(Category()).id
+            CategoryTranslationsTable.repo.create(
                 CategoryTranslations(
-                    categoryId,
-                    languageCode = lv.code,
-                    "Latviski"
-                ),
+                    catId, lang, "Latviski"
+                )
             )
-        )
-        MovieTable.repo.create(Movie(id = -1, "The Birds", Clock.System.now(), null, directorId, categoryId))
+            val found = CategoryTranslationsTable.repo.findById(catId, lang)
+            found?.translation shouldBe "Latviski"
 
-        val movieWithDirector = MovieTable.repo.withRelated(DirectorTable).selectAll().first()
-        assertEquals("Alfred", movieWithDirector.director?.name)
-        assertEquals("The Birds", movieWithDirector.title)
+            val withTranslations = CategoryTable.repo.withRelated(CategoryTranslationsTable).findById(catId)
+            withTranslations shouldNotBe null
+        }
     }
 
     @Test
-    fun `insert with related`() = transaction {
-        val movieWithDirectorOnly = MovieTable.repo.withRelated(DirectorTable, CategoryTable).createWithRelated(
-            movie = Movie(
-                title = "Die Hard",
-                directorId = -1,
-                categoryId = -1,
-                director = Director(name = "John McTiernan"),
-                createdAt = Clock.System.now(),
-                category = Category()
+    fun `foreign key with ref`() {
+        transaction(db) {
+            val directorId = DirectorTable.repo.createReturning(Director(name = "Alfred")).id
+            val categoryId = CategoryTable.repo.createReturning(Category()).id
+            val lv = LanguageTable.repo.insertReturning(Language("lv"))
+            println(
+                CategoryTranslationsTable.repo.createWithRelated(
+                    CategoryTranslations(
+                        categoryId,
+                        languageCode = lv.code,
+                        "Latviski"
+                    ),
+                )
             )
-        )
+            MovieTable.repo.create(Movie(id = -1, "The Birds", Clock.System.now(), null, directorId, categoryId))
 
-        assertNotEquals(-1, movieWithDirectorOnly.directorId)
-        assertNotEquals(-1, movieWithDirectorOnly.categoryId)
+            val movieWithDirector = MovieTable.repo.withRelated(DirectorTable).selectAll().first()
+            movieWithDirector.director?.name shouldBe "Alfred"
+            movieWithDirector.title shouldBe "The Birds"
+        }
     }
 
     @Test
-    fun `delete entity`() = transaction {
-        val repo = LanguageTable.repo
-        val language = repo.createReturning(Language("lv"))
-        assertEquals(language, repo.findById("lv"))
-        repo.delete(language)
-        assertNull(repo.findById("lv"))
+    fun `insert with related`() {
+        transaction(db) {
+            val movieWithDirectorOnly = MovieTable.repo.withRelated(DirectorTable, CategoryTable).createWithRelated(
+                movie = Movie(
+                    title = "Die Hard",
+                    directorId = -1,
+                    categoryId = -1,
+                    director = Director(name = "John McTiernan"),
+                    createdAt = Clock.System.now(),
+                    category = Category()
+                )
+            )
+
+            movieWithDirectorOnly.directorId shouldNotBe -1
+            movieWithDirectorOnly.categoryId shouldNotBe -1
+        }
     }
 
     @Test
-    fun `delete entity with composite key`() = transaction {
-        val repo = CategoryTranslationsTable.repo.withRelated(CategoryTable, LanguageTable)
-
-        val created = repo.createWithRelated(CategoryTranslations(
-            -1,
-            "lv",
-            "Sveiki",
-            Category(),
-            language = Language("lv")
-        ))
-        assertNotNull(repo.findById(created.categoryId, created.languageCode))
-        val deletedCount = repo.delete(created)
-        assertEquals(1, deletedCount)
-        assertNull(repo.findById(created.categoryId, created.languageCode))
+    fun `delete entity`() {
+        transaction(db) {
+            val repo = LanguageTable.repo
+            val language = repo.createReturning(Language("lv"))
+            repo.findById("lv") shouldBe language
+            repo.delete(language)
+            repo.findById("lv") shouldBe null
+        }
     }
 
     @Test
-    fun `delete by id`() = transaction {
-        val repo = CategoryTranslationsTable.repo.withRelated(CategoryTable).withRelated(LanguageTable)
-        val created = repo.createWithRelated(
-            CategoryTranslations(
+    fun `delete entity with composite key`() {
+        transaction(db) {
+            val repo = CategoryTranslationsTable.repo.withRelated(CategoryTable, LanguageTable)
+
+            val created = repo.createWithRelated(CategoryTranslations(
                 -1,
-                "",
+                "lv",
                 "Sveiki",
-                category = Category(),
+                Category(),
                 language = Language("lv")
-            )
-        )
-        assertNotNull(repo.findById(created.categoryId, created.languageCode))
-        repo.deleteById(created.categoryId, created.languageCode)
-        assertNull(repo.findById(created.categoryId, created.languageCode))
+            ))
+            repo.findById(created.categoryId, created.languageCode) shouldNotBe null
+            val deletedCount = repo.delete(created)
+            deletedCount shouldBe 1
+            repo.findById(created.categoryId, created.languageCode) shouldBe null
+        }
     }
 
     @Test
-    fun `unique index`(): Unit = transaction {
-        DirectorTable.repo.apply {
-            create(Director(name = "Alfred"))
-            assertFails { create(Director(name = "Alfred")) }
+    fun `delete by id`() {
+        transaction(db) {
+            val repo = CategoryTranslationsTable.repo.withRelated(CategoryTable).withRelated(LanguageTable)
+            val created = repo.createWithRelated(
+                CategoryTranslations(
+                    -1,
+                    "",
+                    "Sveiki",
+                    category = Category(),
+                    language = Language("lv")
+                )
+            )
+            repo.findById(created.categoryId, created.languageCode) shouldNotBe null
+            repo.deleteById(created.categoryId, created.languageCode)
+            repo.findById(created.categoryId, created.languageCode) shouldBe null
+        }
+    }
+
+    @Test
+    fun `unique index`() {
+        transaction(db) {
+            DirectorTable.repo.apply {
+                create(Director(name = "Alfred"))
+                shouldThrow<Exception> { create(Director(name = "Alfred")) }
+            }
         }
     }
 
@@ -240,10 +264,10 @@ class TestDB {
             )
             val found = ConvertedEntityTable.repo.findById(inserted.id)
 
-            assertNotNull(found)
-            assertEquals(color, found.color)
-            assertNotNull(found.nullableColor)
-            assertEquals(nullableColor, found.nullableColor)
+            found shouldNotBe null
+            found?.color shouldBe color
+            found?.nullableColor shouldNotBe null
+            found?.nullableColor shouldBe nullableColor
         }
     }
 
@@ -254,9 +278,9 @@ class TestDB {
             val inserted = ConvertedEntityTable.repo.createReturning( ConvertedEntity(color = color, nullableColor = null) )
             val found = ConvertedEntityTable.repo.findById(inserted.id)
 
-            assertNotNull(found)
-            assertEquals(color, found.color)
-            assertNull(found.nullableColor)
+            found shouldNotBe null
+            found!!.color shouldBe color
+            found!!.nullableColor shouldBe null
         }
     }
 
@@ -264,7 +288,7 @@ class TestDB {
     fun `ignored field entity table only has id and name columns`() {
         transaction(db) {
             val columnNames = IgnoredFieldEntityTable.columns.map { it.name }
-            assertEquals(listOf("id", "name"), columnNames)
+            columnNames shouldBe listOf("id", "name")
         }
     }
 

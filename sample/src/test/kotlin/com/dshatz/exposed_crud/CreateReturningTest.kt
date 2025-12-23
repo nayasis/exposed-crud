@@ -7,11 +7,10 @@ import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.UUID
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
-import kotlin.test.assertNotNull
 
 /**
  * Test class for createReturning method with different IdTable types
@@ -53,15 +52,15 @@ class CreateReturningTest {
             
             val inserted = IntIdEntityTable.repo.createReturning(entity)
             
-            assertNotNull(inserted)
-            assertNotEquals(-1, inserted.id)
-            assertEquals("Test Int", inserted.name)
+            inserted shouldNotBe null
+            inserted.id shouldNotBe -1
+            inserted.name shouldBe "Test Int"
             
             // Verify we can find it by the returned ID
             val found = IntIdEntityTable.repo.findById(inserted.id)
-            assertNotNull(found)
-            assertEquals(inserted.id, found.id)
-            assertEquals(inserted.name, found.name)
+            found shouldNotBe null
+            found?.id shouldBe inserted.id
+            found?.name shouldBe inserted.name
         }
     }
 
@@ -72,15 +71,15 @@ class CreateReturningTest {
             
             val inserted = LongIdEntityTable.repo.createReturning(entity)
             
-            assertNotNull(inserted)
-            assertNotEquals(-1L, inserted.id)
-            assertEquals("Test Long", inserted.name)
+            inserted shouldNotBe null
+            inserted.id shouldNotBe -1L
+            inserted.name shouldBe "Test Long"
             
             // Verify we can find it by the returned ID
             val found = LongIdEntityTable.repo.findById(inserted.id)
-            assertNotNull(found)
-            assertEquals(inserted.id, found.id)
-            assertEquals(inserted.name, found.name)
+            found shouldNotBe null
+            found?.id shouldBe inserted.id
+            found?.name shouldBe inserted.name
         }
     }
 
@@ -91,15 +90,15 @@ class CreateReturningTest {
             
             val inserted = UIntIdEntityTable.repo.createReturning(entity)
             
-            assertNotNull(inserted)
-            assertNotEquals(0u, inserted.id)
-            assertEquals("Test UInt", inserted.name)
+            inserted shouldNotBe null
+            inserted.id shouldNotBe 0u
+            inserted.name shouldBe "Test UInt"
             
             // Verify we can find it by the returned ID
             val found = UIntIdEntityTable.repo.findById(inserted.id)
-            assertNotNull(found)
-            assertEquals(inserted.id, found.id)
-            assertEquals(inserted.name, found.name)
+            found shouldNotBe null
+            found?.id shouldBe inserted.id
+            found?.name shouldBe inserted.name
         }
     }
 
@@ -110,15 +109,15 @@ class CreateReturningTest {
             
             val inserted = ULongIdEntityTable.repo.createReturning(entity)
             
-            assertNotNull(inserted)
-            assertNotEquals(0u, inserted.id)
-            assertEquals("Test ULong", inserted.name)
+            inserted shouldNotBe null
+            inserted.id shouldNotBe 0u
+            inserted.name shouldBe "Test ULong"
             
             // Verify we can find it by the returned ID
             val found = ULongIdEntityTable.repo.findById(inserted.id)
-            assertNotNull(found)
-            assertEquals(inserted.id, found.id)
-            assertEquals(inserted.name, found.name)
+            found shouldNotBe null
+            found?.id shouldBe inserted.id
+            found?.name shouldBe inserted.name
         }
     }
 
@@ -134,14 +133,14 @@ class CreateReturningTest {
             val inserted3 = IntIdEntityTable.repo.createReturning(entity3)
             
             // All IDs should be different
-            assertNotEquals(inserted1.id, inserted2.id)
-            assertNotEquals(inserted2.id, inserted3.id)
-            assertNotEquals(inserted1.id, inserted3.id)
+            inserted1.id shouldNotBe inserted2.id
+            inserted2.id shouldNotBe inserted3.id
+            inserted1.id shouldNotBe inserted3.id
             
             // All should be retrievable
-            assertNotNull(IntIdEntityTable.repo.findById(inserted1.id))
-            assertNotNull(IntIdEntityTable.repo.findById(inserted2.id))
-            assertNotNull(IntIdEntityTable.repo.findById(inserted3.id))
+            IntIdEntityTable.repo.findById(inserted1.id) shouldNotBe null
+            IntIdEntityTable.repo.findById(inserted2.id) shouldNotBe null
+            IntIdEntityTable.repo.findById(inserted3.id) shouldNotBe null
         }
     }
 
@@ -154,9 +153,9 @@ class CreateReturningTest {
             val inserted1 = LongIdEntityTable.repo.createReturning(entity1)
             val inserted2 = LongIdEntityTable.repo.createReturning(entity2)
             
-            assertNotEquals(inserted1.id, inserted2.id)
-            assertEquals("Long Entity 1", inserted1.name)
-            assertEquals("Long Entity 2", inserted2.name)
+            inserted1.id shouldNotBe inserted2.id
+            inserted1.name shouldBe "Long Entity 1"
+            inserted2.name shouldBe "Long Entity 2"
         }
     }
 
@@ -168,15 +167,15 @@ class CreateReturningTest {
             
             val inserted = UUIDEntityTable.repo.createReturning(entity)
             
-            assertNotNull(inserted)
-            assertNotNull(inserted.id)
-            assertEquals("Test UUID", inserted.name)
+            inserted shouldNotBe null
+            inserted.id shouldNotBe null
+            inserted.name shouldBe "Test UUID"
             
             // Verify we can find it by the returned ID
             val found = UUIDEntityTable.repo.findById(inserted.id)
-            assertNotNull(found)
-            assertEquals(inserted.id, found.id)
-            assertEquals(inserted.name, found.name)
+            found shouldNotBe null
+            found?.id shouldBe inserted.id
+            found?.name shouldBe inserted.name
         }
     }
 
@@ -190,9 +189,9 @@ class CreateReturningTest {
             val inserted2 = UUIDEntityTable.repo.createReturning(entity2)
             
             // All IDs should be different
-            assertNotEquals(inserted1.id, inserted2.id)
-            assertEquals("UUID Entity 1", inserted1.name)
-            assertEquals("UUID Entity 2", inserted2.name)
+            inserted1.id shouldNotBe inserted2.id
+            inserted1.name shouldBe "UUID Entity 1"
+            inserted2.name shouldBe "UUID Entity 2"
         }
     }
 }

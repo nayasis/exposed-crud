@@ -19,6 +19,7 @@ dependencies {
     implementation(project(":annotations"))
     ksp(project(":processor"))
     testImplementation(kotlin("test"))
+    testImplementation("io.kotest:kotest-assertions-core:5.9.1")
     testRuntimeOnly("org.xerial:sqlite-jdbc:3.44.1.0")
     testRuntimeOnly("com.h2database:h2:2.2.224")
 }

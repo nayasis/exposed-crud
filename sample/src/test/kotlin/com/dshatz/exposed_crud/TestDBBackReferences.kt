@@ -13,8 +13,9 @@ import com.dshatz.exposed_crud.models.MovieTable
 import com.dshatz.exposed_crud.models.createWithRelated
 import com.dshatz.exposed_crud.models.findById
 import com.dshatz.exposed_crud.models.repo
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import kotlinx.datetime.Clock
-import org.jetbrains.exposed.dao.id.CompositeID
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.StdOutSqlLogger
@@ -22,8 +23,6 @@ import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 class TestDBBackReferences {
 
@@ -53,7 +52,8 @@ class TestDBBackReferences {
     }
 
     @Test
-    fun `back references`() { transaction(db) {
+    fun `back references`() {
+        transaction(db) {
         val category = CategoryTable.repo.createReturning(Category())
         val catId = CategoryTranslationsTable.repo
             .withRelated(LanguageTable, CategoryTable)
@@ -69,8 +69,8 @@ class TestDBBackReferences {
             }
 
         val translation = CategoryTranslationsTable.repo.withRelated(CategoryTable, LanguageTable).findById(catId.first, catId.second)
-        assertEquals(category, translation?.category)
-        assertEquals("lv", translation?.language?.code)
+        translation?.category shouldBe category
+        translation?.language?.code shouldBe "lv"
 
         CategoryTranslationsTable.repo
             .withRelated(LanguageTable)
@@ -83,10 +83,10 @@ class TestDBBackReferences {
                 )
             )
         val withTranslations = CategoryTable.repo.withRelated(CategoryTranslationsTable).findById(category.id)
-        assertNotNull(withTranslations?.translations)
-        assertEquals(2, withTranslations.translations?.size)
-        assertEquals("Latviski", withTranslations.translations?.find { it.languageCode == "lv" }?.translation)
-        assertEquals("In english", withTranslations.translations?.find { it.languageCode == "en" }?.translation)
+        withTranslations?.translations shouldNotBe null
+        withTranslations?.translations?.size shouldBe 2
+        withTranslations?.translations?.find { it.languageCode == "lv" }?.translation shouldBe "Latviski"
+        withTranslations?.translations?.find { it.languageCode == "en" }?.translation shouldBe "In english"
 
         val director = DirectorTable.repo.createReturning(Director(name = "Alfred"))
         val movie1 = MovieTable.repo.createReturning(
@@ -98,11 +98,13 @@ class TestDBBackReferences {
         )
 
         val directorWithMovies = DirectorTable.repo.withRelated(MovieTable).findById(director.id)
-        assertNotNull(directorWithMovies?.movies)
-        assertEquals(setOf(movie1, movie2), directorWithMovies.movies.toSet())
+        directorWithMovies?.movies shouldNotBe null
+        directorWithMovies!!.movies!!.toSet() shouldBe setOf(movie1, movie2)
 
         val categoryWithMovies = CategoryTable.repo.withRelated(MovieTable).findById(category.id)
-        assertNotNull(categoryWithMovies?.movies)
-        assertEquals(setOf(movie1, movie2), categoryWithMovies.movies?.toSet())
-    }}
+        categoryWithMovies?.movies shouldNotBe null
+        categoryWithMovies!!.movies?.toSet() shouldBe setOf(movie1, movie2)
+        }
+    }
 }
+
