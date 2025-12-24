@@ -75,10 +75,15 @@ class KspProcessor(
     @Throws(ProcessorException::class)
     private fun processEntity(entityClass: KSClassDeclaration): EntityModel {
         val tableAnnotation = entityClass.getAnnotation(Table::class)
-        val tableAnnotationName = tableAnnotation?.getArgumentAs<String>()?.takeUnless { it.isNullOrBlank() }
+        val tableAnnotationName = (tableAnnotation?.arguments?.find { it.name?.asString() == "name" }?.value as? String)?.takeUnless { it.isBlank() }
         val entityAnnotation = entityClass.getAnnotation(Entity::class)
         val entityAnnotationName = entityAnnotation?.getArgumentAs<String>()?.takeUnless { it.isNullOrBlank() }
         val tableName = tableAnnotationName ?: entityAnnotationName ?: entityClass.toClassName().simpleName
+        
+        // Process indexes from @Table annotation
+        val tableIndexes = tableAnnotation?.arguments?.find { it.name?.asString() == "indexes" }?.value as? List<*>
+            ?: emptyList<Any>()
+        
         val props = entityClass.getAllProperties()
         val idProps = entityClass.findPropsWithAnnotation(Id::class)
 
@@ -245,6 +250,30 @@ class KspProcessor(
             throw ProcessorException("No @Id annotation found", entityClass)
         }
 
+        // Process indexes from @Table annotation
+        val indexes = tableIndexes.mapNotNull { indexAnnotation ->
+            if (indexAnnotation is KSAnnotation) {
+                val indexName = indexAnnotation.arguments.find { it.name?.asString() == "name" }?.value as? String
+                    ?: throw ProcessorException("Index name is required", entityClass)
+                val columnList = indexAnnotation.arguments.find { it.name?.asString() == "columnList" }?.value as? String
+                    ?: throw ProcessorException("Index columnList is required", entityClass)
+                val unique = indexAnnotation.arguments.find { it.name?.asString() == "unique" }?.value as? Boolean ?: false
+                
+                // Parse column names from comma-separated string
+                val columnNames = columnList.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                
+                // Validate that all columns exist
+                val columnMap = columns.values.associateBy { it.columnName }
+                columnNames.forEach { colName ->
+                    if (!columnMap.containsKey(colName)) {
+                        throw ProcessorException("Column '$colName' in index '$indexName' does not exist in table '$tableName'", entityClass)
+                    }
+                }
+                
+                IndexInfo(indexName, columnNames, unique)
+            } else null
+        }
+
         return EntityModel(
             declaration = entityClass,
             originalClassName = entityClass.toClassName(),
@@ -253,6 +282,7 @@ class KspProcessor(
             annotations = annotations.toList(),
             primaryKey = primaryKey,
             uniques = uniqueAnnotations,
+            indexes = indexes,
             references = refColumns,
             backReferences = backRefColumns
         )

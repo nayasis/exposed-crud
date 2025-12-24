@@ -68,6 +68,28 @@ class Generator(
                     }
                 }.build())
             }
+            if (tableModel.indexes.isNotEmpty()) {
+                tableDef.addInitializerBlock(CodeBlock.builder().apply {
+                    tableModel.indexes.forEach { indexInfo ->
+                        // Find columns by column name
+                        val indexColumns = indexInfo.columnNames.mapNotNull { colName ->
+                            tableModel.columns.find { it.columnName == colName }
+                        }
+                        if (indexColumns.size != indexInfo.columnNames.size) {
+                            throw ProcessorException(
+                                "Some columns in index '${indexInfo.name}' were not found",
+                                tableModel.declaration
+                            )
+                        }
+                        val template = indexColumns.joinToString(", ") { "%N" }
+                        if (indexInfo.unique) {
+                            addStatement("uniqueIndex(%S, $template)", indexInfo.name, *indexColumns.map { it.nameInDsl }.toTypedArray())
+                        } else {
+                            addStatement("index(%S, false, $template)", indexInfo.name, *indexColumns.map { it.nameInDsl }.toTypedArray())
+                        }
+                    }
+                }.build())
+            }
 
             fileSpec
                 .addType(tableDef.build())

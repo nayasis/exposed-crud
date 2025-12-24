@@ -16,6 +16,7 @@ data class EntityModel(
     val annotations: List<AnnotationInfo>,
     val primaryKey: PrimaryKey,
     val uniques: Map<String, List<ColumnModel>>,
+    val indexes: List<IndexInfo>,
     val references: Map<ColumnModel, ReferenceInfo.WithFK>,
     val backReferences: Map<ColumnModel, ReferenceInfo.Reverse>
 ) {
@@ -164,3 +165,9 @@ sealed class ReferenceInfo(open val related: TypeName) {
 data class AnnotationInfo(val cls: ClassName, val params: List<Any?>)
 
 data class ConverterInfo(val converterClass: TypeName, val targetType: TypeName)
+
+data class IndexInfo(
+    val name: String,
+    val columnNames: List<String>,
+    val unique: Boolean = false
+)
