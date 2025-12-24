@@ -89,11 +89,12 @@ class TestDB {
     fun `update custom where`() {
         transaction(db) {
             DirectorTable.repo.create(Director(name = "Bob"))
-            val id = DirectorTable.repo.selectAll().find { it.name == "Bob" }!!.id
+            val id = DirectorTable.repo.select().where { DirectorTable.name eq "Bob" }.firstOrNull()?.id
 
-            DirectorTable.repo.update({ DirectorTable.id eq id }, Director(name = "Marley"))
+            DirectorTable.repo.update({ DirectorTable.id eq id }, {it[name] = "Marley"})
 
-            DirectorTable.repo.selectAll().first().name shouldBe "Marley"
+            DirectorTable.repo.select().where { DirectorTable.id eq id }.firstOrNull()?.name shouldBe "Marley"
+
         }
     }
 

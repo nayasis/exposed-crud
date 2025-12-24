@@ -9,6 +9,7 @@ import org.jetbrains.exposed.v1.core.dao.id.ULongIdTable
 import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.core.statements.InsertStatement
+import org.jetbrains.exposed.v1.core.statements.UpdateStatement
 import org.jetbrains.exposed.v1.jdbc.*
 
 data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<ColumnSet> = emptyList()) where T: IdTable<ID>, T: IEntityTable<E, ID> {
@@ -94,11 +95,26 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
         }.first().let(::toEntity)
     }
 
-    @Deprecated("Needs re-thinking")
-    fun update(where: () -> Op<Boolean>, data: E) {
-        table.update(where) {
-            table.writeExceptAutoIncrementing(it, data)
-        }
+    /**
+     * Updates rows of a table matching the given condition.
+     *
+     * @param where Condition that determines which rows to update.
+     * @param body Lambda that sets the values to update. Receives the table as receiver and UpdateStatement as parameter.
+     * @return Number of updated rows.
+     */
+    fun update(where: () -> Op<Boolean>, body: T.(UpdateStatement) -> Unit): Int {
+        return table.update(where, null, body)
+    }
+
+    /**
+     * Updates rows of a table with an optional limit.
+     *
+     * @param body Lambda that sets the values to update. Receives the table as receiver and UpdateStatement as parameter.
+     * @param limit Maximum number of rows to update. If null, all matching rows are updated.
+     * @return Number of updated rows.
+     */
+    fun update(body: T.(UpdateStatement) -> Unit, limit: Int? = null): Int {
+        return table.update( limit, body)
     }
 
     /**
