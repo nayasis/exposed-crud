@@ -21,7 +21,7 @@ class KspProcessor(
         val annotated = resolver.getSymbolsWithAnnotation(Entity::class.qualifiedName!!)
         try {
             val jsonFormats = processJsonFormats(resolver)
-            val entityClasses = annotated.asDataClassDeclarations()
+            val entityClasses = annotated.asClassDeclarations()
             val models = entityClasses.associate {
                 it.toClassName() to processEntity(it)
             }
@@ -61,10 +61,14 @@ class KspProcessor(
         return JsonFormatModel(nameToFunctionMap)
     }
 
-    private fun Sequence<KSAnnotated>.asDataClassDeclarations(): Sequence<KSClassDeclaration> {
+    private fun Sequence<KSAnnotated>.asClassDeclarations(): Sequence<KSClassDeclaration> {
         return mapNotNull {
-            if (it is KSClassDeclaration && Modifier.DATA in it.modifiers) it
-            else throw ProcessorException("Not a data class", it)
+            if (it is KSClassDeclaration) {
+                // data class 또는 일반 class 모두 허용
+                it
+            } else {
+                throw ProcessorException("Not a class declaration", it)
+            }
         }
     }
 

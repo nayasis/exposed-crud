@@ -327,14 +327,60 @@ class Generator(
                 .build()
             convertingCode.addStatement("%L", code)
         }
+        val isDataClass = com.google.devtools.ksp.symbol.Modifier.DATA in declaration.modifiers
         val toEntity = FunSpec.builder("toEntity")
             .addModifiers(KModifier.OVERRIDE)
             .returns(originalClassName)
             .addParameter("row", ResultRow::class)
             .addParameter(ParameterSpec.builder("related", LIST.parameterizedBy(ColumnSet::class.asTypeName())).build())
-            .addStatement("return %T(\n%L)", originalClassName, convertingCode.build())
-            .build()
-        return toEntity
+        
+        if (isDataClass) {
+            // data class인 경우 생성자 파라미터 사용
+            toEntity.addStatement("return %T(\n%L)", originalClassName, convertingCode.build())
+        } else {
+            // 일반 class인 경우 객체 생성 후 프로퍼티 할당
+            val assignmentCode = CodeBlock.builder()
+            columns.forEach {
+                if (it in primaryKey || it.foreignKey != null) {
+                    assignmentCode.addStatement("%N = row[%T.%N].value", it.nameInEntity, tableClass, it.nameInDsl)
+                } else {
+                    assignmentCode.addStatement("%N = row[%T.%N]", it.nameInEntity, tableClass, it.nameInDsl)
+                }
+            }
+            references.forEach { (column, refInfo) ->
+                assignmentCode.addStatement("%N = %M(row, %T)", column.nameInEntity, member, models[refInfo.related]!!.tableClass)
+            }
+            backReferences.forEach { (column, refinfo) ->
+                val relatedModel = models[refinfo.related]!!
+                val (_, remoteReference) = relatedModel.references.entries.find { it.value.related == this.originalClassName }
+                    ?: throw ProcessorException("Could not find @Reference on ${relatedModel.originalClassName} that matches this @BackReference", column.declaration)
+                val remoteColumns = getForeignKeysForReference(relatedModel, remoteReference)
+                val whereClause = CodeBlock.builder()
+                remoteColumns.forEachIndexed { idx, col ->
+                    val localCol = getForeignKeyColumn(col.foreignKey!!).nameInDsl
+                    val remoteCol = col.nameInDsl
+                    whereClause.add(
+                        "%T.%N.%M(row[%N])",
+                        relatedModel.tableClass,
+                        remoteCol,
+                        MemberName("org.jetbrains.exposed.v1.core","eq"),
+                        localCol,
+                    )
+                }
+                val code = CodeBlock.builder().addNamed("%localProp:N = if (%relTable:T in related) %relTable:T.repo.select()", mapOf(
+                    "localProp" to column.nameInEntity,
+                    "relTable" to relatedModel.tableClass
+                )).beginControlFlow(".where")
+                    .add("%L\n", whereClause.build())
+                    .endControlFlow()
+                    .add(".toList() else null")
+                    .build()
+                assignmentCode.addStatement("%L", code)
+            }
+            toEntity.addStatement("return %T().apply {\n%L\n}", originalClassName, assignmentCode.build())
+        }
+        
+        return toEntity.build()
     }
 
     private fun ColumnModel.generateProp(tableModel: EntityModel): PropertySpec {
