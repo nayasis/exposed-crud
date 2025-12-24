@@ -5,7 +5,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import org.jetbrains.exposed.dao.id.*
+import org.jetbrains.exposed.v1.core.dao.id.*
 import java.util.*
 
 data class EntityModel(
@@ -67,15 +67,15 @@ data class EntityModel(
             .map { it.asTypeName() }.toSet()
         private val tableTypes = simpleIdTypes.associateWith {
             val suffix = if (it.simpleName == "UUID") "Table" else "IdTable"
-            ClassName("org.jetbrains.exposed.dao.id", it.simpleName + suffix)
+            ClassName("org.jetbrains.exposed.v1.core.dao.id", it.simpleName + suffix)
         }
 
         private val entityTypes = simpleIdTypes.associateWith {
-            ClassName("org.jetbrains.exposed.dao", it.simpleName + "Entity")
+            ClassName("org.jetbrains.exposed.v1.core.dao", it.simpleName + "Entity")
         }
 
         private val entityCompanionTypes = simpleIdTypes.associateWith {
-            ClassName("org.jetbrains.exposed.dao", it.simpleName + "EntityClass")
+            ClassName("org.jetbrains.exposed.v1.core.dao", it.simpleName + "EntityClass")
         }
 
         fun EntityModel.crudRepositoryType(): ParameterizedTypeName {

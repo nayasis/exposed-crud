@@ -5,7 +5,6 @@ import com.dshatz.exposed_crud.models.JavaTimeEntityTable
 import com.dshatz.exposed_crud.models.KotlinTimeEntity
 import com.dshatz.exposed_crud.models.KotlinTimeEntityTable
 import com.dshatz.exposed_crud.models.repo
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate as KotlinLocalDate
 import kotlinx.datetime.LocalDateTime as KotlinLocalDateTime
 import kotlinx.datetime.LocalTime as KotlinLocalTime
@@ -18,13 +17,13 @@ import java.time.LocalTime as JavaLocalTime
 import kotlin.math.abs
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import org.jetbrains.exposed.v1.core.StdOutSqlLogger
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.StdOutSqlLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import kotlin.time.Clock
 
 class TimeEntityTest {
 

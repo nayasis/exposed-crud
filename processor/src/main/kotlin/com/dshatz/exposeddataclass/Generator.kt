@@ -6,12 +6,12 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import org.jetbrains.exposed.dao.id.CompositeID
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.statements.UpdateBuilder
+import org.jetbrains.exposed.v1.core.dao.id.CompositeID
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.*
+import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.statements.UpdateBuilder
 
 class Generator(
     private val models: Map<ClassName, EntityModel>,
@@ -313,7 +313,7 @@ class Generator(
                     "%T.%N.%M(row[%N])",
                     relatedModel.tableClass,
                     remoteCol,
-                    MemberName("org.jetbrains.exposed.sql.SqlExpressionBuilder","eq"),
+                    MemberName("org.jetbrains.exposed.v1.core","eq"),
                     localCol,
                 )
             }
@@ -415,26 +415,26 @@ class Generator(
 
         val spec = PropertySpec.builder(nameInDsl, propType)
         if (isSimpleId) spec.addModifiers(KModifier.OVERRIDE)
-
+        
         return spec.initializer(initializer.build()).build()
     }
 
     private fun ColumnModel.exposedTypeFun(colName: String, overrideType: TypeName? = null): CodeBlock {
-        val kotlinDateTimePackage = "org.jetbrains.exposed.sql.kotlin.datetime"
+        val kotlinDateTimePackage = "org.jetbrains.exposed.v1.datetime"
         fun makeBuiltinCode(name: String): CodeBlock {
             return CodeBlock.of("%N(%S)", MemberName(Table::class.asClassName(), name), colName)
         }
         fun makeKotlinDatetimeCode(name: String): CodeBlock {
             return CodeBlock.of(
                 "%M(%S)",
-                MemberName("org.jetbrains.exposed.sql.kotlin.datetime", name, isExtension = true),
+                MemberName("org.jetbrains.exposed.v1.datetime", name, isExtension = true),
                 colName
             )
         }
         fun makeJavaTimeCode(name: String): CodeBlock {
             return CodeBlock.of(
                 "%M(%S)",
-                MemberName("org.jetbrains.exposed.sql.javatime", name, isExtension = true),
+                MemberName("org.jetbrains.exposed.v1.javatime", name, isExtension = true),
                 colName
             )
         }
@@ -459,7 +459,7 @@ class Generator(
         fun makeJsonCode(typeAttr: FieldAttrs.ColType.Json, propType: TypeName): CodeBlock {
             return CodeBlock.of(
                 "%M<%T>(%S, %M)",
-                MemberName("org.jetbrains.exposed.sql.json", typeAttr.exposedFunction, isExtension = true),
+                MemberName("org.jetbrains.exposed.v1.json", typeAttr.exposedFunction, isExtension = true),
                 propType.copy(nullable = false),
                 colName,
                 jsonFormatAccessors[typeAttr.formatName] ?: throw ProcessorException("Could not find json format with name ${typeAttr.formatName}. Please define it with @JsonFormat.", declaration)
@@ -499,7 +499,7 @@ class Generator(
                 when ((nonNullType as? ClassName)?.canonicalName) {
                     "kotlinx.datetime.LocalDate" -> makeKotlinDatetimeCode("date")
                     "kotlinx.datetime.LocalDateTime" -> makeKotlinDatetimeCode("datetime")
-                    "kotlinx.datetime.Instant" -> makeKotlinDatetimeCode("timestamp")
+                    "kotlin.time.Instant" -> makeKotlinDatetimeCode("timestamp")
                     "kotlinx.datetime.LocalTime" -> makeKotlinDatetimeCode("time")
                     "java.time.LocalDate" -> makeJavaTimeCode("date")
                     "java.time.LocalDateTime" -> makeJavaTimeCode("datetime")
@@ -556,15 +556,15 @@ class Generator(
 
     private fun generateDeleteById(model: EntityModel): FunSpec {
         val idCode = makeIdCode(model)
-        val deleteWhere = MemberName("org.jetbrains.exposed.sql", "deleteWhere")
-        val eq = MemberName("org.jetbrains.exposed.sql.SqlExpressionBuilder", "eq")
+        val eq = MemberName("org.jetbrains.exposed.v1.core", "eq")
+        val deleteWhere = MemberName("org.jetbrains.exposed.v1.jdbc", "deleteWhere")
         return FunSpec.builder("deleteById")
             .receiver(model.crudRepositoryType())
             .returns(INT)
             .addParameters(model.primaryKey.map {
                 ParameterSpec(it.nameInEntity, it.type)
             })
-            .addCode("return table.%M(op = {\n%T.id.%M(EntityID(%L, %T))\n})", deleteWhere, model.tableClass, eq, idCode, model.tableClass)
+            .addCode("return with (table) {\n  %M(op = {\n    %T.id.%M(EntityID(%L, %T))\n  })\n}", deleteWhere, model.tableClass, eq, idCode, model.tableClass)
             .build()
     }
 
@@ -596,7 +596,7 @@ class Generator(
             )
         }
 
-        val insertCode = CodeBlock.builder().beginControlFlow("return %M", MemberName("org.jetbrains.exposed.sql.transactions", "transaction"))
+        val insertCode = CodeBlock.builder().beginControlFlow("return %M", MemberName("org.jetbrains.exposed.v1.jdbc.transactions", "transaction"))
         params.forEach { (relatedModel, param, refColumn, remoteColumns, localColumns) ->
             val repoHasRelated = CodeBlock.builder()
                 .addStatement("val has%N: Boolean = %T in related && %N.%N != null",
@@ -678,6 +678,6 @@ class Generator(
     }
 
     companion object {
-        private val and = MemberName("org.jetbrains.exposed.sql", "and")
+        private val and = MemberName("org.jetbrains.exposed.v1.core", "and")
     }
 }

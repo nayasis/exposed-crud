@@ -1,27 +1,15 @@
 package com.dshatz.exposed_crud.typed
 
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.dao.id.IdTable
-import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.dao.id.LongIdTable
-import org.jetbrains.exposed.dao.id.UIntIdTable
-import org.jetbrains.exposed.dao.id.ULongIdTable
-import org.jetbrains.exposed.dao.id.UUIDTable
-import org.jetbrains.exposed.sql.ColumnSet
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.Query
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SizedIterable
-import org.jetbrains.exposed.sql.SqlExpressionBuilder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.insertReturning
-import org.jetbrains.exposed.sql.mapLazy
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.InsertStatement
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import org.jetbrains.exposed.v1.core.dao.id.LongIdTable
+import org.jetbrains.exposed.v1.core.dao.id.UIntIdTable
+import org.jetbrains.exposed.v1.core.dao.id.ULongIdTable
+import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
+import org.jetbrains.exposed.v1.core.*
+import org.jetbrains.exposed.v1.core.statements.InsertStatement
+import org.jetbrains.exposed.v1.jdbc.*
 
 data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<ColumnSet> = emptyList()) where T: IdTable<ID>, T: IEntityTable<E, ID> {
 
@@ -107,7 +95,7 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
     }
 
     @Deprecated("Needs re-thinking")
-    fun update(where: SqlExpressionBuilder.() -> Op<Boolean>, data: E) {
+    fun update(where: () -> Op<Boolean>, data: E) {
         table.update(where) {
             table.writeExceptAutoIncrementing(it, data)
         }
@@ -175,7 +163,7 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
         return table.toEntity(resultRow, related)
     }
 
-    fun findOne(where: SqlExpressionBuilder.() -> Op<Boolean>): E? {
+    fun findOne(where: () -> Op<Boolean>): E? {
         return select().where(where).limit(1).firstOrNull()
     }
 

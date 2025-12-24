@@ -1,14 +1,15 @@
 package com.dshatz.exposed_crud.models
 
 import com.dshatz.exposed_crud.*
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 @Entity
 @Serializable
-data class Movie(
+data class Movie @OptIn(ExperimentalTime::class) constructor(
     @Id(autoGenerate = true) val id: Long = -1,
 
     val title: String,

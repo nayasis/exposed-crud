@@ -18,17 +18,14 @@ import com.dshatz.exposed_crud.models.createWithRelated
 import com.dshatz.exposed_crud.models.deleteById
 import com.dshatz.exposed_crud.models.findById
 import com.dshatz.exposed_crud.models.repo
-import kotlinx.datetime.Clock
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.StdOutSqlLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.transaction
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -40,7 +37,6 @@ class TestDB {
     fun init() {
         db = Database.connect("jdbc:sqlite:memory:test_db_${java.util.UUID.randomUUID()}?foreign_keys=on", "org.sqlite.JDBC")
         transaction(db) {
-            addLogger(StdOutSqlLogger)
             listOf(
                 DirectorTable,
                 MovieTable,
@@ -94,6 +90,7 @@ class TestDB {
         transaction(db) {
             DirectorTable.repo.create(Director(name = "Bob"))
             val id = DirectorTable.repo.selectAll().find { it.name == "Bob" }!!.id
+
             DirectorTable.repo.update({ DirectorTable.id eq id }, Director(name = "Marley"))
 
             DirectorTable.repo.selectAll().first().name shouldBe "Marley"
@@ -167,7 +164,7 @@ class TestDB {
                     ),
                 )
             )
-            MovieTable.repo.create(Movie(id = -1, "The Birds", Clock.System.now(), null, directorId, categoryId))
+            MovieTable.repo.create(Movie(id = -1, "The Birds", kotlin.time.Clock.System.now(), null, directorId, categoryId))
 
             val movieWithDirector = MovieTable.repo.withRelated(DirectorTable).selectAll().first()
             movieWithDirector.director?.name shouldBe "Alfred"
@@ -184,7 +181,7 @@ class TestDB {
                     directorId = -1,
                     categoryId = -1,
                     director = Director(name = "John McTiernan"),
-                    createdAt = Clock.System.now(),
+                    createdAt = kotlin.time.Clock.System.now(),
                     category = Category()
                 )
             )
@@ -279,8 +276,8 @@ class TestDB {
             val found = ConvertedEntityTable.repo.findById(inserted.id)
 
             found shouldNotBe null
-            found!!.color shouldBe color
-            found!!.nullableColor shouldBe null
+            found?.color shouldBe color
+            found?.nullableColor shouldBe null
         }
     }
 
