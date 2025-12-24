@@ -68,6 +68,28 @@ class Generator(
                     }
                 }.build())
             }
+            if (tableModel.indexes.isNotEmpty()) {
+                tableDef.addInitializerBlock(CodeBlock.builder().apply {
+                    tableModel.indexes.forEach { indexInfo ->
+                        // Find columns by column name
+                        val indexColumns = indexInfo.columnNames.mapNotNull { colName ->
+                            tableModel.columns.find { it.columnName == colName }
+                        }
+                        if (indexColumns.size != indexInfo.columnNames.size) {
+                            throw ProcessorException(
+                                "Some columns in index '${indexInfo.name}' were not found",
+                                tableModel.declaration
+                            )
+                        }
+                        val template = indexColumns.joinToString(", ") { "%N" }
+                        if (indexInfo.unique) {
+                            addStatement("uniqueIndex(%S, $template)", indexInfo.name, *indexColumns.map { it.nameInDsl }.toTypedArray())
+                        } else {
+                            addStatement("index(%S, false, $template)", indexInfo.name, *indexColumns.map { it.nameInDsl }.toTypedArray())
+                        }
+                    }
+                }.build())
+            }
 
             fileSpec
                 .addType(tableDef.build())
@@ -335,10 +357,10 @@ class Generator(
             .addParameter(ParameterSpec.builder("related", LIST.parameterizedBy(ColumnSet::class.asTypeName())).build())
         
         if (isDataClass) {
-            // data class인 경우 생성자 파라미터 사용
+            // Use constructor parameters for data class
             toEntity.addStatement("return %T(\n%L)", originalClassName, convertingCode.build())
         } else {
-            // 일반 class인 경우 객체 생성 후 프로퍼티 할당
+            // For regular class, create object and assign properties
             val assignmentCode = CodeBlock.builder()
             columns.forEach {
                 if (it in primaryKey || it.foreignKey != null) {
