@@ -18,8 +18,8 @@ data class Color(val red: Int, val green: Int, val blue: Int) {
 }
 
 class ColorConverter : AttributeConverter<Color, String?> {
-    override fun convertToDatabaseColumn(attribute: Color): String {
-        return attribute.toString()
+    override fun convertToDatabaseColumn(entityData: Color): String {
+        return entityData.toString()
     }
     override fun convertToEntityAttribute(dbData: String?): Color {
         return dbData?.let { Color.fromString(it) } ?: Color(0,0,0)
@@ -27,8 +27,8 @@ class ColorConverter : AttributeConverter<Color, String?> {
 }
 
 class NullableColorConverter : AttributeConverter<Color?, String?> {
-    override fun convertToDatabaseColumn(attribute: Color?): String? {
-        return attribute?.toString()
+    override fun convertToDatabaseColumn(entityData: Color?): String? {
+        return entityData?.toString()
     }
     override fun convertToEntityAttribute(dbData: String?): Color? {
         return dbData?.let { Color.fromString(it) }
