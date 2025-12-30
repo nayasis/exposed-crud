@@ -34,11 +34,14 @@ import com.dshatz.exposeddataclass.PrimaryKey
 import com.dshatz.exposeddataclass.ProcessorException
 import com.dshatz.exposeddataclass.ReferenceInfo
 import com.dshatz.exposeddataclass.decapitate
-import com.dshatz.exposeddataclass.findPropsWithAnnotation
+import com.dshatz.exposeddataclass.findIdProperties
 import com.dshatz.exposeddataclass.getAnnotation
 import com.dshatz.exposeddataclass.getArgumentAs
 import com.dshatz.exposeddataclass.getPropName
+import com.dshatz.exposeddataclass.hasAnnotation
+import com.dshatz.exposeddataclass.hasTransientMarker
 import com.dshatz.exposeddataclass.parse
+import com.dshatz.exposeddataclass.valueByKey
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
@@ -58,7 +61,8 @@ import com.squareup.kotlinpoet.asTypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
-import kotlin.reflect.KClass
+import java.math.BigInteger
+import java.security.MessageDigest
 
 class KspProcessor(
     private val codeGenerator: CodeGenerator,
@@ -123,7 +127,7 @@ class KspProcessor(
 
         val tableName = getTableName(entityClass)
         val props     = entityClass.getAllProperties()
-        val idProps   = entityClass.findPropsWithAnnotation(Id::class)
+        val idProps   = entityClass.findIdProperties()
 
         val referenceProps = props.filter { it.getAnnotation(References::class) != null }
         val backReferenceProps = props.filter { it.getAnnotation(BackReference::class) != null }
@@ -133,9 +137,6 @@ class KspProcessor(
 
         fun KSPropertyDeclaration.isReferenceProp() =
             this in referenceProps || this in backReferenceProps
-
-        fun KSPropertyDeclaration.hasTransientMarker() =
-            hasTransientAnnotation() || getter.hasTransientAnnotation() || setter.hasTransientAnnotation()
 
         fun KSPropertyDeclaration.validateTransientConstructorParam() {
             val constructorDefault = constructorParameters[getPropName()] ?: return
@@ -165,104 +166,12 @@ class KspProcessor(
 
         val uniqueAnnotations = mutableMapOf<String, MutableList<ColumnModel>>()
 
-        fun computeProp(declaration: KSPropertyDeclaration): ColumnModel {
-
-            validateTimestampAnnotation(declaration)
-
-            val name = declaration.getPropName()
-            val type = declaration.type.toTypeName()
-            val columnAnnotation = declaration.getAnnotation(Column::class)
-
-            val default = if (type.copy(nullable = false) == STRING) {
-                declaration.getAnnotation(DefaultText::class)?.getArgumentAs<String>()?.let { CodeBlock.of("%S", it) }
-            } else {
-                declaration.getAnnotation(Default::class)?.getArgumentAs<String>()?.let { CodeBlock.of("%L", it) }
-            }
-            val columnName = columnAnnotation?.getArgumentAs<String>() ?: name.decapitate()
-
-            val foreignKey = declaration.getAnnotation(ForeignKey::class)?.let {
-                val remoteType = it.getArgumentAs<KSType>()?.toTypeName()!!
-                val remoteColumn = it.getArgumentAs<String>(1)?.takeUnless { it.isEmpty() }
-                FKInfo(remoteType, remoteColumn)
-            }
-
-            val autoIncrement = declaration.getAnnotation(Id::class)?.getArgumentAs<Boolean>() == true
-
-            val converter = declaration.getAnnotation(Convert::class)?.let {
-                val converterClass = it.getArgumentAs<KSType>(0)!!
-                val converterDeclaration = converterClass.declaration as KSClassDeclaration
-                val attributeConverterQualifiedName = AttributeConverter::class.qualifiedName
-                val attributeConverterType = converterDeclaration.superTypes.firstOrNull { superType ->
-                    try {
-                        val resolved = superType.resolve()
-                        resolved.declaration.qualifiedName?.asString() == attributeConverterQualifiedName
-                    } catch (e: Exception) {
-                        false
-                    }
-                }?.resolve() ?: throw ProcessorException("Could not find AttributeConverter supertype for converter", declaration)
-                
-                val targetType = attributeConverterType.arguments[1].type!!.resolve().toTypeName()
-                ConverterInfo(converterClass.toTypeName(), targetType)
-            }
-
-            val columnType = converter?.targetType ?: declaration.type.toTypeName()
-            val isStringProp = columnType.copy(nullable = false) == STRING
-            val textProps = listOf(Collate::class, Varchar::class, Text::class, MediumText::class, LargeText::class).mapNotNull {
-                declaration.getAnnotation(it)?.also {
-                    if (!isStringProp) throw ProcessorException(it.annotationType.toTypeName().toString() + " can only be used on a String property or a property with a String converter target type.", it)
-                }
-            }
-            val otherProps = listOf(Json::class, Jsonb::class).mapNotNull {
-                declaration.getAnnotation(it)
-            }.mapNotNull {
-                when (it.annotationType.toTypeName()) {
-                    Json::class.asTypeName() -> FieldAttrs.ColType.Json.Json(it.getArgumentAs()!!)
-                    Jsonb::class.asTypeName() -> FieldAttrs.ColType.Json.Jsonb(it.getArgumentAs()!!)
-                    else -> null
-                }
-            }
-            if (textProps.count { it.parse().cls.simpleName != "Collate" } > 1) {
-                throw ProcessorException("Only one of Varchar, Text, MediumText, LargeText can be applied to a String column.", declaration)
-            }
-            val props = textProps.mapNotNull {
-                when (it.annotationType.toTypeName()) {
-                    Collate::class.asTypeName() -> FieldAttrs.Collate(it.getArgumentAs())
-                    Varchar::class.asTypeName() -> FieldAttrs.ColType.String.Varchar(it.getArgumentAs()!!)
-                    Text::class.asTypeName() -> FieldAttrs.ColType.String.Text.GenericText(it.getArgumentAs()!!)
-                    MediumText::class.asTypeName() -> FieldAttrs.ColType.String.Text.MediumText(it.getArgumentAs()!!)
-                    LargeText::class.asTypeName() -> FieldAttrs.ColType.String.Text.LargeText(it.getArgumentAs()!!)
-                    else -> null
-                }
-            }
-
-            return ColumnModel(
-                declaration = declaration,
-                nameInEntity = name,
-                columnName = columnName,
-                nameInDsl = name.takeUnless { idProps.size == 1 && idProps.first().first.getPropName() == name } ?: "id",
-                type = declaration.type.toTypeName(),
-                autoIncrementing = autoIncrement,
-                default = default,
-                foreignKey = foreignKey,
-                attrs = props + otherProps,
-                converter = converter,
-                isMutable = declaration.isMutable,
-                creationTimestamp = declaration.hasAnnotation(CreationTimestamp::class),
-                updateTimestamp = declaration.hasAnnotation(UpdateTimestamp::class),
-            ).also {
-                val uniqueIndexName = declaration.getAnnotation(Unique::class)?.getArgumentAs<String>()
-                if (uniqueIndexName != null) {
-                    uniqueAnnotations.getOrPut(uniqueIndexName) { mutableListOf() }.add(it)
-                }
-            }
-        }
-
         val columns = (props - ignoredProps.toSet() - referenceProps.toSet() - backReferenceProps.toSet()).associateWith { declaration ->
-            computeProp(declaration)
+            toProperty(declaration, idProps, uniqueAnnotations)
         }
 
         val refColumns = referenceProps.associate { declaration ->
-            val prop = computeProp(declaration)
+            val prop = toProperty(declaration, idProps, uniqueAnnotations)
             if (!prop.type.isNullable) throw ProcessorException("@References annotated props should be nullable and have default null.", declaration)
             val ref = ReferenceInfo.WithFK(
                 related = declaration.getAnnotation(References::class)?.getArgumentAs<KSType>(0)?.toTypeName()!!,
@@ -272,7 +181,7 @@ class KspProcessor(
         }
 
         val backRefColumns = backReferenceProps.associate { declaration ->
-            val prop = computeProp(declaration)
+            val prop = toProperty(declaration, idProps, uniqueAnnotations)
             if (!prop.type.isNullable) throw ProcessorException("@BackReference annotated props should be nullable and have default null.", declaration)
             val baseType = prop.type.run {
                 if (this is ParameterizedTypeName) this.rawType
@@ -285,15 +194,12 @@ class KspProcessor(
             prop to ref
         }
 
-        val primaryKey = if (idProps.size == 1) {
-            PrimaryKey.Simple(columns[idProps.first().first]!!)
-        } else if (idProps.size > 1) {
-            PrimaryKey.Composite(idProps.map { columns[it.first]!! })
-        } else {
-            throw ProcessorException("No @Id annotation found", entityClass)
+        val primaryKey = when {
+            idProps.size == 1 -> PrimaryKey.Simple(columns[idProps.first().first]!!)
+            idProps.size >  1 -> PrimaryKey.Composite(idProps.map { columns[it.first]!! })
+            else -> throw ProcessorException("No @Id annotation found", entityClass)
         }
 
-        // Process indexes from @Table annotation
         val indexes = getIndexes(entityClass, columns)
 
         return EntityModel(
@@ -308,6 +214,109 @@ class KspProcessor(
             references = refColumns,
             backReferences = backRefColumns
         )
+    }
+
+    fun toProperty(
+        declaration: KSPropertyDeclaration,
+        idProperties: List<Pair<KSPropertyDeclaration, KSAnnotation>>,
+        uniqueAnnotations: MutableMap<String, MutableList<ColumnModel>>,
+    ): ColumnModel {
+
+        validateTimestampAnnotation(declaration)
+
+        val name = declaration.getPropName()
+        val type = declaration.type.toTypeName()
+        val columnAnnotation = declaration.getAnnotation(Column::class)
+
+        val default = if (type.copy(nullable = false) == STRING) {
+            declaration.getAnnotation(DefaultText::class)?.getArgumentAs<String>()?.let { CodeBlock.of("%S", it) }
+        } else {
+            declaration.getAnnotation(Default::class)?.getArgumentAs<String>()?.let { CodeBlock.of("%L", it) }
+        }
+        val columnName = columnAnnotation?.getArgumentAs<String>() ?: name.decapitate()
+
+        val foreignKey = declaration.getAnnotation(ForeignKey::class)?.let {
+            val remoteType = it.getArgumentAs<KSType>()?.toTypeName()!!
+            val remoteColumn = it.getArgumentAs<String>(1)?.takeUnless { it.isEmpty() }
+            FKInfo(remoteType, remoteColumn)
+        }
+
+        val autoIncrement = declaration.getAnnotation(Id::class)?.getArgumentAs<Boolean>() == true
+
+        val converter = getConverter(declaration)
+
+        val columnType = converter?.targetType ?: declaration.type.toTypeName()
+        val isStringProp = columnType.copy(nullable = false) == STRING
+        val textProps = listOf(Collate::class, Varchar::class, Text::class, MediumText::class, LargeText::class).mapNotNull {
+            declaration.getAnnotation(it)?.also {
+                if (!isStringProp) throw ProcessorException(it.annotationType.toTypeName().toString() + " can only be used on a String property or a property with a String converter target type.", it)
+            }
+        }
+        val otherProps = listOf(Json::class, Jsonb::class).mapNotNull {
+            declaration.getAnnotation(it)
+        }.mapNotNull {
+            when (it.annotationType.toTypeName()) {
+                Json::class.asTypeName() -> FieldAttrs.ColType.Json.Json(it.getArgumentAs()!!)
+                Jsonb::class.asTypeName() -> FieldAttrs.ColType.Json.Jsonb(it.getArgumentAs()!!)
+                else -> null
+            }
+        }
+        if (textProps.count { it.parse().cls.simpleName != "Collate" } > 1) {
+            throw ProcessorException("Only one of Varchar, Text, MediumText, LargeText can be applied to a String column.", declaration)
+        }
+        val props = textProps.mapNotNull {
+            when (it.annotationType.toTypeName()) {
+                Collate::class.asTypeName() -> FieldAttrs.Collate(it.getArgumentAs())
+                Varchar::class.asTypeName() -> FieldAttrs.ColType.String.Varchar(it.getArgumentAs()!!)
+                Text::class.asTypeName() -> FieldAttrs.ColType.String.Text.GenericText(it.getArgumentAs()!!)
+                MediumText::class.asTypeName() -> FieldAttrs.ColType.String.Text.MediumText(it.getArgumentAs()!!)
+                LargeText::class.asTypeName() -> FieldAttrs.ColType.String.Text.LargeText(it.getArgumentAs()!!)
+                else -> null
+            }
+        }
+
+        return ColumnModel(
+            declaration = declaration,
+            nameInEntity = name,
+            columnName = columnName,
+            nameInDsl = name.takeUnless { idProperties.size == 1 && idProperties.first().first.getPropName() == name } ?: "id",
+            type = declaration.type.toTypeName(),
+            autoIncrementing = autoIncrement,
+            default = default,
+            foreignKey = foreignKey,
+            attrs = props + otherProps,
+            converter = converter,
+            isMutable = declaration.isMutable,
+            creationTimestamp = declaration.hasAnnotation(CreationTimestamp::class),
+            updateTimestamp = declaration.hasAnnotation(UpdateTimestamp::class),
+        ).also {
+            declaration.getAnnotation(Unique::class)?.getArgumentAs<String>()?.let { uniqueIndexName ->
+                uniqueAnnotations.getOrPut(uniqueIndexName) { mutableListOf() }.add(it)
+            }
+        }
+    }
+
+
+    private fun getConverter(declaration: KSPropertyDeclaration): ConverterInfo? {
+        return declaration.getAnnotation(Convert::class)?.let {
+            val converterClass = it.getArgumentAs<KSType>(0)!!
+            val converterDeclaration = converterClass.declaration as KSClassDeclaration
+            val attributeConverterQualifiedName = AttributeConverter::class.qualifiedName
+            val attributeConverterType = converterDeclaration.superTypes.firstOrNull { superType ->
+                try {
+                    val resolved = superType.resolve()
+                    resolved.declaration.qualifiedName?.asString() == attributeConverterQualifiedName
+                } catch (e: Exception) {
+                    false
+                }
+            }?.resolve() ?: throw ProcessorException(
+                "Could not find AttributeConverter supertype for converter",
+                declaration
+            )
+
+            val targetType = attributeConverterType.arguments[1].type!!.resolve().toTypeName()
+            ConverterInfo(converterClass.toTypeName(), targetType)
+        }
     }
 
     private fun getIndexes(
@@ -326,7 +335,7 @@ class KspProcessor(
 
             val unique = indexAnnotation.valueByKey("unique") as? Boolean ?: false
 
-            val columnList   = (indexAnnotation.valueByKey("columnList") as? String).takeUnless { it.isNullOrBlank() }
+            val columnList = (indexAnnotation.valueByKey("columnList") as? String).takeUnless { it.isNullOrBlank() }
                 ?: throw ProcessorException("Index columnList must not be empty", entityClass)
 
             val columnNames = columnList.split(",").map { it.trim() }.filter { it.isNotEmpty() }.takeIf { it.isNotEmpty() }
@@ -366,21 +375,20 @@ class KspProcessor(
      * Uses SHA-256 and converts to base36 (0-9, a-z) for a 10-character identifier.
      */
     private fun generateHashId(columnNames: List<String>): String {
-        // Create a deterministic input string from column names (order matters)
+
         val input = columnNames.joinToString(",")
         
         // Generate SHA-256 hash
-        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(input.toByteArray())
         
         // Use first 6 bytes (48 bits) to ensure we have enough entropy for 10 base36 characters
-        // Convert to BigInteger for base36 conversion
-        val bigInt = java.math.BigInteger(1, hashBytes.copyOfRange(0, 6))
+        val bigInt = BigInteger(1, hashBytes.copyOfRange(0, 6))
         
         // Convert to base36 (0-9, a-z)
         val base36 = bigInt.toString(36)
         
-        // Pad or truncate to exactly 10 characters
+        // extract 10 characters
         return when {
             base36.length < 10 -> base36.padStart(10, '0')
             base36.length > 10 -> base36.take(10)
@@ -422,30 +430,12 @@ class KspProcessor(
     }
 
 
-    private fun KSAnnotated?.hasTransientAnnotation(): Boolean {
-        return this?.annotations?.any {
-            when (it.annotationType.resolve().declaration.qualifiedName?.asString()) {
-                "kotlin.jvm.Transient",
-                "kotlinx.serialization.Transient" -> true
-                else -> false
-            }
-        } == true
-    }
-
     private fun validate(models: Iterable<EntityModel>) {
         models.forEach { table ->
             if (table.primaryKey is PrimaryKey.Composite && table.columns.any { it.autoIncrementing && it in table.primaryKey}) {
                 logger.error("auto-increment on a composite key now allowed", table.declaration)
             }
         }
-    }
-
-    private fun KSAnnotation.valueByKey(name: String): Any? {
-        return this.arguments.firstOrNull { it.name?.asString() == name }?.value
-    }
-
-    private fun KSPropertyDeclaration.hasAnnotation(annotation: KClass<*>): Boolean {
-        return this.getAnnotation(annotation) != null
     }
 
 }

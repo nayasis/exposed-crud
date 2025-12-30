@@ -1,5 +1,6 @@
 package com.dshatz.exposeddataclass
 
+import com.dshatz.exposed_crud.Id
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
@@ -75,4 +76,30 @@ fun AnnotationInfo.generate(): AnnotationSpec {
         a.addMember(CodeBlock.of(it.toString()))
     }
     return a.build()
+}
+
+fun KSAnnotation.valueByKey(name: String): Any? {
+    return this.arguments.firstOrNull { it.name?.asString() == name }?.value
+}
+
+fun KSAnnotated?.hasTransientAnnotation(): Boolean {
+    return this?.annotations?.any {
+        when (it.annotationType.resolve().declaration.qualifiedName?.asString()) {
+            "kotlin.jvm.Transient",
+            "kotlinx.serialization.Transient" -> true
+            else -> false
+        }
+    } == true
+}
+
+fun KSPropertyDeclaration.hasAnnotation(annotation: KClass<*>): Boolean {
+    return this.getAnnotation(annotation) != null
+}
+
+fun KSPropertyDeclaration.hasTransientMarker(): Boolean {
+    return hasTransientAnnotation() || getter.hasTransientAnnotation() || setter.hasTransientAnnotation()
+}
+
+fun KSClassDeclaration.findIdProperties(): List<Pair<KSPropertyDeclaration, KSAnnotation>> {
+    return this.findPropsWithAnnotation(Id::class)
 }
