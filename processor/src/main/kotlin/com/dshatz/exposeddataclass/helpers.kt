@@ -1,6 +1,7 @@
 package com.dshatz.exposeddataclass
 
 import com.dshatz.exposed_crud.Id
+import com.dshatz.exposed_crud.Ignore
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
@@ -98,6 +99,14 @@ fun KSPropertyDeclaration.hasAnnotation(annotation: KClass<*>): Boolean {
 
 fun KSPropertyDeclaration.hasTransientMarker(): Boolean {
     return hasTransientAnnotation() || getter.hasTransientAnnotation() || setter.hasTransientAnnotation()
+}
+
+fun KSAnnotated?.hasIgnoreAnnotation(): Boolean {
+    return this?.getAnnotation(Ignore::class) != null
+}
+
+fun KSPropertyDeclaration.hasIgnoreMarker(): Boolean {
+    return hasIgnoreAnnotation() || getter.hasIgnoreAnnotation() || setter.hasIgnoreAnnotation()
 }
 
 fun KSClassDeclaration.findIdProperties(): List<Pair<KSPropertyDeclaration, KSAnnotation>> {

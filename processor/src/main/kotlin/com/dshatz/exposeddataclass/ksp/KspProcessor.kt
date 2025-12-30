@@ -10,6 +10,7 @@ import com.dshatz.exposed_crud.DefaultText
 import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.ForeignKey
 import com.dshatz.exposed_crud.Id
+import com.dshatz.exposed_crud.Ignore
 import com.dshatz.exposed_crud.Json
 import com.dshatz.exposed_crud.JsonFormat
 import com.dshatz.exposed_crud.Jsonb
@@ -39,6 +40,7 @@ import com.dshatz.exposeddataclass.getAnnotation
 import com.dshatz.exposeddataclass.getArgumentAs
 import com.dshatz.exposeddataclass.getPropName
 import com.dshatz.exposeddataclass.hasAnnotation
+import com.dshatz.exposeddataclass.hasIgnoreMarker
 import com.dshatz.exposeddataclass.hasTransientMarker
 import com.dshatz.exposeddataclass.parse
 import com.dshatz.exposeddataclass.valueByKey
@@ -138,6 +140,16 @@ class KspProcessor(
         fun KSPropertyDeclaration.isReferenceProp() =
             this in referenceProps || this in backReferenceProps
 
+        fun KSPropertyDeclaration.validateIgnoreConstructorParam() {
+            val constructorDefault = constructorParameters[getPropName()] ?: return
+            if (!constructorDefault && !type.toTypeName().isNullable) {
+                throw ProcessorException(
+                    "@Ignore property '${getPropName()}' must be nullable or declare a default value in the constructor.",
+                    this
+                )
+            }
+        }
+
         fun KSPropertyDeclaration.validateTransientConstructorParam() {
             val constructorDefault = constructorParameters[getPropName()] ?: return
             if (!constructorDefault && !type.toTypeName().isNullable) {
@@ -151,6 +163,10 @@ class KspProcessor(
         val ignoredProps = props.filter { prop ->
             if (prop.isReferenceProp()) return@filter false
             when {
+                prop.hasIgnoreMarker() -> {
+                    prop.validateIgnoreConstructorParam()
+                    true
+                }
                 prop.hasTransientMarker() -> {
                     prop.validateTransientConstructorParam()
                     true

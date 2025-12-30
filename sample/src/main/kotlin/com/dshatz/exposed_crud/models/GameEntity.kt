@@ -14,8 +14,8 @@ import com.dshatz.exposed_crud.Table
     indexes = [
         Index(name = "specificIndex", columnList = "console_type,cover_type,game_id"),
         Index(name = "uniqueGameIndex", columnList = "game_id", unique = true),
-        Index(columnList = "title"),  // name이 비어있으면 자동 생성: idx_{hashId}
-        Index(columnList = "console_type,title")  // 복합 인덱스도 자동 생성
+        Index(columnList = "title"),  // Auto-generated name when empty: idx_{hashId}
+        Index(columnList = "console_type,title")  // Composite index also auto-generated
     ]
 )
 @Entity("games")
