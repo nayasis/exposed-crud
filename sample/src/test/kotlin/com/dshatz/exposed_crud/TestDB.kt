@@ -58,10 +58,11 @@ class TestDB {
     fun `test insert`() {
         transaction(db) {
             val director = Director(0, "Alfred")
-            val inserted = DirectorTable.repo.createReturning(director.copy(oldDirector = director))
+            val inserted = DirectorTable.repo.create(director.copy(oldDirector = director))
             val found = DirectorTable.repo.select().where(DirectorTable.name eq "Alfred").first()
             found.name shouldBe "Alfred"
-            found shouldBe inserted
+            found.id shouldBe inserted.id
+            found.name shouldBe inserted.name
         }
     }
 
@@ -101,7 +102,7 @@ class TestDB {
     @Test
     fun `update by simple primary key`() {
         transaction(db) {
-            val id = DirectorTable.repo.createReturning(Director(name = "Bob")).id
+            val id = DirectorTable.repo.create(Director(name = "Bob")).id
             DirectorTable.repo.update(Director(id, "Marley"))
             DirectorTable.repo.selectAll().first().name shouldBe "Marley"
         }
@@ -110,7 +111,7 @@ class TestDB {
     @Test
     fun `select where`() {
         transaction(db) {
-            val id = DirectorTable.repo.createReturning(Director(name = "Bob")).id
+            val id = DirectorTable.repo.create(Director(name = "Bob")).id
             val director = DirectorTable.repo.select().where {
                 DirectorTable.name eq "Bob"
             }.first()
@@ -123,7 +124,7 @@ class TestDB {
     @Test
     fun `find by id`() {
         transaction(db) {
-            val directorId = DirectorTable.repo.createReturning(Director(name = "Alfred")).id
+            val directorId = DirectorTable.repo.create(Director(name = "Alfred")).id
 
             val found = DirectorTable.repo.findById(directorId)
             found shouldNotBe null
@@ -136,7 +137,7 @@ class TestDB {
         transaction(db) {
             val lang = "lv"
             LanguageTable.repo.create(Language(lang))
-            val catId = CategoryTable.repo.createReturning(Category()).id
+            val catId = CategoryTable.repo.create(Category()).id
             CategoryTranslationsTable.repo.create(
                 CategoryTranslations(
                     catId, lang, "Latviski"
@@ -153,9 +154,9 @@ class TestDB {
     @Test
     fun `foreign key with ref`() {
         transaction(db) {
-            val directorId = DirectorTable.repo.createReturning(Director(name = "Alfred")).id
-            val categoryId = CategoryTable.repo.createReturning(Category()).id
-            val lv = LanguageTable.repo.insertReturning(Language("lv"))
+            val directorId = DirectorTable.repo.create(Director(name = "Alfred")).id
+            val categoryId = CategoryTable.repo.create(Category()).id
+            val lv = LanguageTable.repo.insert(Language("lv"))
             println(
                 CategoryTranslationsTable.repo.createWithRelated(
                     CategoryTranslations(
@@ -196,7 +197,7 @@ class TestDB {
     fun `delete entity`() {
         transaction(db) {
             val repo = LanguageTable.repo
-            val language = repo.createReturning(Language("lv"))
+            val language = repo.create(Language("lv"))
             repo.findById("lv") shouldBe language
             repo.delete(language)
             repo.findById("lv") shouldBe null
@@ -257,7 +258,7 @@ class TestDB {
         transaction(db) {
             val color = Color(255, 23, 7)
             val nullableColor = Color(128, 64, 32)
-            val inserted = ConvertedEntityTable.repo.createReturning(
+            val inserted = ConvertedEntityTable.repo.create(
                 ConvertedEntity(color = color, nullableColor = nullableColor)
             )
             val found = ConvertedEntityTable.repo.findById(inserted.id)
@@ -273,7 +274,7 @@ class TestDB {
     fun `test converted entity with null nullable field`() {
         transaction(db) {
             val color = Color(255, 23, 7)
-            val inserted = ConvertedEntityTable.repo.createReturning( ConvertedEntity(color = color, nullableColor = null) )
+            val inserted = ConvertedEntityTable.repo.create( ConvertedEntity(color = color, nullableColor = null) )
             val found = ConvertedEntityTable.repo.findById(inserted.id)
 
             found shouldNotBe null

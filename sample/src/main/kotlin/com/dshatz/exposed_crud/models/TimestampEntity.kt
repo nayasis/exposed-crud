@@ -4,8 +4,6 @@ import com.dshatz.exposed_crud.CreationTimestamp
 import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.Id
 import com.dshatz.exposed_crud.UpdateTimestamp
-import kotlinx.datetime.LocalDate
-import java.time.LocalDateTime
 
 /**
  * Entity for testing CreationTimestamp and UpdateTimestamp annotations
@@ -16,10 +14,10 @@ data class TimestampEntity(
     var id: Long = -1,
     var name: String = "",
     @CreationTimestamp
-    var createdAt: LocalDateTime? = null,
+    var createdAt: java.time.LocalDateTime? = null,
     @UpdateTimestamp
-    var updatedAt: LocalDateTime? = null,
+    var updatedAt: java.time.LocalDateTime? = null,
     @CreationTimestamp
     @UpdateTimestamp
-    var tickedAt: LocalDate? = null,
+    var tickedAt: kotlinx.datetime.LocalDateTime? = null,
 )

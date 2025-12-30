@@ -13,17 +13,17 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class Director(
     @Id(true)
-    val id: Long = -1,
+    var id: Long = -1,
 
     @Unique
     @MediumText
-    val name: String,
+    var name: String,
 
     @BackReference(Movie::class)
-    val movies: List<Movie>? = null,
+    var movies: List<Movie>? = null,
 
     @com.dshatz.exposed_crud.Json("director")
-    val oldDirector: Director? = null
+    var oldDirector: Director? = null
 )
 
 @JsonFormat("director")

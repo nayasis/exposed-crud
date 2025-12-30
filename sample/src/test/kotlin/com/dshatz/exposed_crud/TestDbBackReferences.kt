@@ -50,7 +50,7 @@ class TestDbBackReferences {
     @Test
     fun `back references`() {
         transaction(db) {
-        val category = CategoryTable.repo.createReturning(Category())
+        val category = CategoryTable.repo.create(Category())
         val catId = CategoryTranslationsTable.repo
             .withRelated(LanguageTable, CategoryTable)
             .createWithRelated(
@@ -84,22 +84,30 @@ class TestDbBackReferences {
         withTranslations?.translations?.find { it.languageCode == "lv" }?.translation shouldBe "Latviski"
         withTranslations?.translations?.find { it.languageCode == "en" }?.translation shouldBe "In english"
 
-        val director = DirectorTable.repo.createReturning(Director(name = "Alfred"))
-        val movie1 = MovieTable.repo.createReturning(
+        val director = DirectorTable.repo.create(Director(name = "Alfred"))
+        val movie1 = MovieTable.repo.create(
             Movie(title = "The birds", directorId = director.id, categoryId = category.id, createdAt = kotlin.time.Clock.System.now()),
         )
 
-        val movie2 = MovieTable.repo.createReturning(
+        val movie2 = MovieTable.repo.create(
             Movie(title = "The birds 2", directorId = director.id, categoryId = category.id, createdAt = kotlin.time.Clock.System.now()),
         )
 
         val directorWithMovies = DirectorTable.repo.withRelated(MovieTable).findById(director.id)
         directorWithMovies?.movies shouldNotBe null
-        directorWithMovies?.movies?.toSet() shouldBe setOf(movie1, movie2)
+        // create() returns the same object, so movie1 and movie2 are the original objects
+        // But findById returns new objects, so we need to compare by ID
+        val foundMovieIds = directorWithMovies?.movies?.map { it.id }?.toSet()
+        foundMovieIds shouldBe setOf(movie1.id, movie2.id)
+        directorWithMovies?.movies?.size shouldBe 2
 
         val categoryWithMovies = CategoryTable.repo.withRelated(MovieTable).findById(category.id)
         categoryWithMovies?.movies shouldNotBe null
-        categoryWithMovies?.movies?.toSet() shouldBe setOf(movie1, movie2)
+        // create() returns the same object, so movie1 and movie2 are the original objects
+        // But findById returns new objects, so we need to compare by ID
+        val categoryMovieIds = categoryWithMovies?.movies?.map { it.id }?.toSet()
+        categoryMovieIds shouldBe setOf(movie1.id, movie2.id)
+        categoryWithMovies?.movies?.size shouldBe 2
         }
     }
 }

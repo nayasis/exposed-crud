@@ -47,7 +47,7 @@ class TimeEntityTest {
     @Test
     fun `kotlin time entity uses default timestamps dates and times`() {
         transaction(db) {
-            val inserted = KotlinTimeEntityTable.repo.createReturning(
+            val inserted = KotlinTimeEntityTable.repo.create(
                 KotlinTimeEntity(name = "kotlin-default")
             )
 
@@ -72,7 +72,7 @@ class TimeEntityTest {
             val customBirthday = KotlinLocalDate(1985, 8, 12)
             val customWakeup = KotlinLocalTime(5, 30, 0)
 
-            val inserted = KotlinTimeEntityTable.repo.createReturning(
+            val inserted = KotlinTimeEntityTable.repo.create(
                 KotlinTimeEntity(
                     name = "kotlin-custom",
                     createdAt = customCreated,
@@ -93,7 +93,7 @@ class TimeEntityTest {
     @Test
     fun `java time entity uses default timestamps dates and times`() {
         transaction(db) {
-            val inserted = JavaTimeEntityTable.repo.createReturning(
+            val inserted = JavaTimeEntityTable.repo.create(
                 JavaTimeEntity(name = "java-default")
             )
 
@@ -118,7 +118,7 @@ class TimeEntityTest {
             val customAnniversary = JavaLocalDate.of(2010, 11, 5)
             val customWakeup = JavaLocalTime.of(4, 45)
 
-            val inserted = JavaTimeEntityTable.repo.createReturning(
+            val inserted = JavaTimeEntityTable.repo.create(
                 JavaTimeEntity(
                     name = "java-custom",
                     createdAt = customCreated,

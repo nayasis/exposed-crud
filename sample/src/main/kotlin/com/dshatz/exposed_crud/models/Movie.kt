@@ -10,7 +10,7 @@ import kotlin.time.Instant
 @Entity
 @Serializable
 data class Movie @OptIn(ExperimentalTime::class) constructor(
-    @Id(autoGenerate = true) val id: Long = -1,
+    @Id(autoGenerate = true) var id: Long = -1,
 
     val title: String,
 

@@ -37,7 +37,7 @@ class IndexCreationTimingTest {
             // Table object is initialized (init block runs), but no DB operations yet
             // Check if table exists
             val tables = SchemaUtils.listTables()
-            tables.any { it.toString().contains("GAMES", ignoreCase = true) } shouldBe false
+            tables.any { it.contains("GAMES", ignoreCase = true) } shouldBe false
             
             // Table object exists in memory, but table doesn't exist in DB
             // This confirms that init block execution doesn't create DB objects
@@ -51,14 +51,14 @@ class IndexCreationTimingTest {
             
             // Before SchemaUtils.create - no table, no indexes
             val tablesBefore = SchemaUtils.listTables()
-            tablesBefore.any { it.toString().contains("GAMES", ignoreCase = true) } shouldBe false
+            tablesBefore.any { it.contains("GAMES", ignoreCase = true) } shouldBe false
             
             // Call SchemaUtils.create - this should create table AND indexes
             SchemaUtils.create(GameTable)
             
             // After SchemaUtils.create - table and indexes should exist
             val tablesAfter = SchemaUtils.listTables()
-            tablesAfter.any { it.toString().contains("GAMES", ignoreCase = true) } shouldBe true
+            tablesAfter.any { it.contains("GAMES", ignoreCase = true) } shouldBe true
             
             val indices = GameTable.indices
             indices.size shouldBe 4
@@ -93,7 +93,7 @@ class IndexCreationTimingTest {
             val initialIndices = GameTable.indices.size
             
             // Perform data operations
-            GameTable.repo.createReturning(com.dshatz.exposed_crud.models.Game().apply {
+            GameTable.repo.create(Game().apply {
                 title = "Test Game"
                 consoleType = "PS5"
             })

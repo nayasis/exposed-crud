@@ -726,7 +726,7 @@ class Generator(
             getIdOrInsert.add("%L", repoHasRelated)
             localColumns.zip(remoteColumns).forEach { (localCol, remoteCol) ->
                 getIdOrInsert.beginControlFlow("val %N = if (has%N)", localCol.nameInEntity, relatedModel.originalClassName.simpleName)
-                    .addStatement("%T.repo.createReturning(%N.%N!!).%N", relatedModel.tableClass, modelParamName, refColumn.nameInEntity, remoteCol.nameInEntity)
+                    .addStatement("%T.repo.create(%N.%N!!).%N", relatedModel.tableClass, modelParamName, refColumn.nameInEntity, remoteCol.nameInEntity)
                     .nextControlFlow("else")
                     .addStatement("%N.%N", modelParamName, localCol.nameInEntity)
                     .endControlFlow()
@@ -741,7 +741,7 @@ class Generator(
         }
         copyCode.add(")")
 
-        insertCode.addStatement("createReturning(%L)", copyCode.build())
+        insertCode.addStatement("create(%L)", copyCode.build())
         insertCode.endControlFlow()
 
         val docs = CodeBlock.builder().addNamed("""

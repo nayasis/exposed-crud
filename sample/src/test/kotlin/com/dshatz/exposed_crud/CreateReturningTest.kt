@@ -49,7 +49,7 @@ class CreateReturningTest {
         transaction(db) {
             val entity = IntIdEntity(id = -1, name = "Test Int")
             
-            val inserted = IntIdEntityTable.repo.createReturning(entity)
+            val inserted = IntIdEntityTable.repo.create(entity)
             
             inserted shouldNotBe null
             inserted.id shouldNotBe -1
@@ -68,7 +68,7 @@ class CreateReturningTest {
         transaction(db) {
             val entity = LongIdEntity(id = -1, name = "Test Long")
             
-            val inserted = LongIdEntityTable.repo.createReturning(entity)
+            val inserted = LongIdEntityTable.repo.create(entity)
             
             inserted shouldNotBe null
             inserted.id shouldNotBe -1L
@@ -87,7 +87,7 @@ class CreateReturningTest {
         transaction(db) {
             val entity = UIntIdEntity(id = 0u, name = "Test UInt")
             
-            val inserted = UIntIdEntityTable.repo.createReturning(entity)
+            val inserted = UIntIdEntityTable.repo.create(entity)
             
             inserted shouldNotBe null
             inserted.id shouldNotBe 0u
@@ -106,7 +106,7 @@ class CreateReturningTest {
         transaction(db) {
             val entity = ULongIdEntity(id = 0u, name = "Test ULong")
             
-            val inserted = ULongIdEntityTable.repo.createReturning(entity)
+            val inserted = ULongIdEntityTable.repo.create(entity)
             
             inserted shouldNotBe null
             inserted.id shouldNotBe 0u
@@ -127,9 +127,9 @@ class CreateReturningTest {
             val entity2 = IntIdEntity(id = -1, name = "Entity 2")
             val entity3 = IntIdEntity(id = -1, name = "Entity 3")
             
-            val inserted1 = IntIdEntityTable.repo.createReturning(entity1)
-            val inserted2 = IntIdEntityTable.repo.createReturning(entity2)
-            val inserted3 = IntIdEntityTable.repo.createReturning(entity3)
+            val inserted1 = IntIdEntityTable.repo.create(entity1)
+            val inserted2 = IntIdEntityTable.repo.create(entity2)
+            val inserted3 = IntIdEntityTable.repo.create(entity3)
             
             // All IDs should be different
             inserted1.id shouldNotBe inserted2.id
@@ -149,8 +149,8 @@ class CreateReturningTest {
             val entity1 = LongIdEntity(id = -1, name = "Long Entity 1")
             val entity2 = LongIdEntity(id = -1, name = "Long Entity 2")
             
-            val inserted1 = LongIdEntityTable.repo.createReturning(entity1)
-            val inserted2 = LongIdEntityTable.repo.createReturning(entity2)
+            val inserted1 = LongIdEntityTable.repo.create(entity1)
+            val inserted2 = LongIdEntityTable.repo.create(entity2)
             
             inserted1.id shouldNotBe inserted2.id
             inserted1.name shouldBe "Long Entity 1"
@@ -164,7 +164,7 @@ class CreateReturningTest {
             val tempId = UUID.randomUUID()
             val entity = UUIDEntity(id = tempId, name = "Test UUID")
             
-            val inserted = UUIDEntityTable.repo.createReturning(entity)
+            val inserted = UUIDEntityTable.repo.create(entity)
             
             inserted shouldNotBe null
             inserted.id shouldNotBe null
@@ -184,8 +184,8 @@ class CreateReturningTest {
             val entity1 = UUIDEntity(id = UUID.randomUUID(), name = "UUID Entity 1")
             val entity2 = UUIDEntity(id = UUID.randomUUID(), name = "UUID Entity 2")
             
-            val inserted1 = UUIDEntityTable.repo.createReturning(entity1)
-            val inserted2 = UUIDEntityTable.repo.createReturning(entity2)
+            val inserted1 = UUIDEntityTable.repo.create(entity1)
+            val inserted2 = UUIDEntityTable.repo.create(entity2)
             
             // All IDs should be different
             inserted1.id shouldNotBe inserted2.id

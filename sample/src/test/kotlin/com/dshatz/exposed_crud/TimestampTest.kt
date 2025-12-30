@@ -32,11 +32,23 @@ class TimestampTest {
     @Test
     fun `CreationTimestamp should be set automatically on insert`() {
         transaction(db) {
-            val entity = TimestampEntityTable.repo.createReturning(TimestampEntity())
+
+            val first = TimestampEntityTable.repo.create(TimestampEntity())
             
-            entity.createdAt shouldNotBe null
-            entity.tickedAt shouldNotBe null
-            entity.updatedAt shouldBe null
+            first.createdAt shouldNotBe null
+            first.updatedAt shouldBe null
+            first.tickedAt shouldNotBe null
+
+            Thread.sleep(100)
+
+            val second = TimestampEntityTable.repo.update(first.copy())
+
+            second.createdAt shouldBe first.createdAt
+            second.updatedAt shouldNotBe null
+            second.updatedAt shouldNotBe first.updatedAt
+            second.tickedAt shouldNotBe null
+            second.tickedAt shouldNotBe first.tickedAt
+
         }
     }
 
@@ -44,7 +56,7 @@ class TimestampTest {
     fun `UpdateTimestamp should be set automatically on update`() {
         transaction(db) {
             // Insert entity
-            val entity = TimestampEntityTable.repo.createReturning(TimestampEntity().apply {
+            val entity = TimestampEntityTable.repo.create(TimestampEntity().apply {
                 name = "Test Entity"
             })
             
@@ -68,7 +80,7 @@ class TimestampTest {
     fun `both timestamps should work together`() {
         transaction(db) {
             // Insert
-            val entity1 = TimestampEntityTable.repo.createReturning(TimestampEntity().apply {
+            val entity1 = TimestampEntityTable.repo.create(TimestampEntity().apply {
                 name = "Entity 1"
             })
             
@@ -92,7 +104,7 @@ class TimestampTest {
     fun `tickedAt should be set on both insert and update`() {
         transaction(db) {
             // Insert - tickedAt should be set (has both @CreationTimestamp and @UpdateTimestamp)
-            val entity1 = TimestampEntityTable.repo.createReturning(TimestampEntity().apply {
+            val entity1 = TimestampEntityTable.repo.create(TimestampEntity().apply {
                 name = "Entity with tickedAt"
             })
             

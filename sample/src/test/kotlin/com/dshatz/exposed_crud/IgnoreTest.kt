@@ -38,15 +38,14 @@ class IgnoreTest {
             val tables = SchemaUtils.listTables()
             tables.any { it.contains("IGNORE_ENTITIES", ignoreCase = true) } shouldBe true
             
-            // Verify ignored fields are not in the table
-            // Only id, name, and active should be present
+            // verify non-ignored fields should be present
             val columnNames = columns.map { it.name }
             columnNames.size shouldBe 3 // id, name, active
             columnNames.contains("id") shouldBe true
             columnNames.contains("name") shouldBe true
             columnNames.contains("active") shouldBe true
             
-            // Verify ignored fields are not present
+            // verify ignored fields are not present
             columnNames.contains("ignoredField") shouldBe false
             columnNames.contains("computedProperty") shouldBe false
             columnNames.contains("anotherIgnored") shouldBe false
@@ -56,8 +55,8 @@ class IgnoreTest {
     @Test
     fun entityWithIgnoredFieldsShouldWork() {
         transaction(db) {
-            // Create entity with ignored fields
-            val originalEntity = IgnoreEntity(
+
+            val data = IgnoreEntity(
                 name = "Test Entity",
                 active = true,
                 ignoredField = "This should be ignored"
@@ -66,24 +65,16 @@ class IgnoreTest {
                 computedProperty = "This should also be ignored"
             }
             
-            val entity = IgnoreEntityTable.repo.createReturning(originalEntity)
-            
-            // Verify entity was created with correct database fields
-            entity.id shouldNotBe -1L
-            entity.name shouldBe "Test Entity"
-            entity.active shouldBe true
-            
-            // Verify ignored fields are not stored in database
-            // createReturning fetches from database, so ignored fields will have default values
-            entity.ignoredField shouldBe null
-            entity.anotherIgnored shouldBe 0
-            
-            // Retrieve from database again - same result
-            val retrieved = IgnoreEntityTable.repo.findById(entity.id)
-            retrieved?.name shouldBe "Test Entity"
-            retrieved?.active shouldBe true
-            retrieved?.ignoredField shouldBe null
-            retrieved?.anotherIgnored shouldBe 0
+            val inserted = IgnoreEntityTable.repo.create(data)
+            val found = IgnoreEntityTable.repo.findById(inserted.id)
+
+            found shouldNotBe null
+            found?.id shouldBe inserted.id
+            found?.name shouldBe inserted.name
+            found?.active shouldBe inserted.active
+            found?.ignoredField shouldBe null
+            found?.anotherIgnored shouldBe 0
+
         }
     }
 }
