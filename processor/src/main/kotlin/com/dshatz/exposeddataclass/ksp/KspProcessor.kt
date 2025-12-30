@@ -1,14 +1,64 @@
 package com.dshatz.exposeddataclass.ksp
 
-import com.dshatz.exposed_crud.*
+import com.dshatz.exposed_crud.BackReference
+import com.dshatz.exposed_crud.Collate
+import com.dshatz.exposed_crud.Column
+import com.dshatz.exposed_crud.Convert
+import com.dshatz.exposed_crud.CreationTimestamp
+import com.dshatz.exposed_crud.Default
+import com.dshatz.exposed_crud.DefaultText
+import com.dshatz.exposed_crud.Entity
+import com.dshatz.exposed_crud.ForeignKey
+import com.dshatz.exposed_crud.Id
+import com.dshatz.exposed_crud.Json
+import com.dshatz.exposed_crud.JsonFormat
+import com.dshatz.exposed_crud.Jsonb
+import com.dshatz.exposed_crud.LargeText
+import com.dshatz.exposed_crud.MediumText
+import com.dshatz.exposed_crud.References
+import com.dshatz.exposed_crud.Table
+import com.dshatz.exposed_crud.Text
+import com.dshatz.exposed_crud.Unique
+import com.dshatz.exposed_crud.UpdateTimestamp
+import com.dshatz.exposed_crud.Varchar
 import com.dshatz.exposed_crud.interfaces.AttributeConverter
-import com.dshatz.exposeddataclass.*
-import com.google.devtools.ksp.processing.*
-import com.google.devtools.ksp.symbol.*
-import com.squareup.kotlinpoet.*
+import com.dshatz.exposeddataclass.ColumnModel
+import com.dshatz.exposeddataclass.ConverterInfo
+import com.dshatz.exposeddataclass.EntityModel
+import com.dshatz.exposeddataclass.FKInfo
+import com.dshatz.exposeddataclass.FieldAttrs
+import com.dshatz.exposeddataclass.Generator
+import com.dshatz.exposeddataclass.IndexInfo
+import com.dshatz.exposeddataclass.JsonFormatModel
+import com.dshatz.exposeddataclass.PrimaryKey
+import com.dshatz.exposeddataclass.ProcessorException
+import com.dshatz.exposeddataclass.ReferenceInfo
+import com.dshatz.exposeddataclass.decapitate
+import com.dshatz.exposeddataclass.findPropsWithAnnotation
+import com.dshatz.exposeddataclass.getAnnotation
+import com.dshatz.exposeddataclass.getArgumentAs
+import com.dshatz.exposeddataclass.getPropName
+import com.dshatz.exposeddataclass.parse
+import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.processing.SymbolProcessor
+import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSAnnotation
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSPropertyDeclaration
+import com.google.devtools.ksp.symbol.KSType
+import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.LIST
+import com.squareup.kotlinpoet.ParameterizedTypeName
+import com.squareup.kotlinpoet.STRING
+import com.squareup.kotlinpoet.asTypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
+import kotlin.reflect.KClass
 
 class KspProcessor(
     private val codeGenerator: CodeGenerator,
@@ -63,29 +113,17 @@ class KspProcessor(
 
     private fun Sequence<KSAnnotated>.asClassDeclarations(): Sequence<KSClassDeclaration> {
         return mapNotNull {
-            if (it is KSClassDeclaration) {
-                // data class 또는 일반 class 모두 허용
-                it
-            } else {
-                throw ProcessorException("Not a class declaration", it)
-            }
+            // allow (normal) class and data class
+            it as? KSClassDeclaration ?: throw ProcessorException("Not a class declaration", it)
         }
     }
 
     @Throws(ProcessorException::class)
     private fun processEntity(entityClass: KSClassDeclaration): EntityModel {
-        val tableAnnotation = entityClass.getAnnotation(Table::class)
-        val tableAnnotationName = (tableAnnotation?.arguments?.find { it.name?.asString() == "name" }?.value as? String)?.takeUnless { it.isBlank() }
-        val entityAnnotation = entityClass.getAnnotation(Entity::class)
-        val entityAnnotationName = entityAnnotation?.getArgumentAs<String>()?.takeUnless { it.isNullOrBlank() }
-        val tableName = tableAnnotationName ?: entityAnnotationName ?: entityClass.toClassName().simpleName
-        
-        // Process indexes from @Table annotation
-        val tableIndexes = tableAnnotation?.arguments?.find { it.name?.asString() == "indexes" }?.value as? List<*>
-            ?: emptyList<Any>()
-        
-        val props = entityClass.getAllProperties()
-        val idProps = entityClass.findPropsWithAnnotation(Id::class)
+
+        val tableName = getTableName(entityClass)
+        val props     = entityClass.getAllProperties()
+        val idProps   = entityClass.findPropsWithAnnotation(Id::class)
 
         val referenceProps = props.filter { it.getAnnotation(References::class) != null }
         val backReferenceProps = props.filter { it.getAnnotation(BackReference::class) != null }
@@ -128,6 +166,9 @@ class KspProcessor(
         val uniqueAnnotations = mutableMapOf<String, MutableList<ColumnModel>>()
 
         fun computeProp(declaration: KSPropertyDeclaration): ColumnModel {
+
+            validateTimestampAnnotation(declaration)
+
             val name = declaration.getPropName()
             val type = declaration.type.toTypeName()
             val columnAnnotation = declaration.getAnnotation(Column::class)
@@ -206,6 +247,8 @@ class KspProcessor(
                 attrs = props + otherProps,
                 converter = converter,
                 isMutable = declaration.isMutable,
+                creationTimestamp = declaration.hasAnnotation(CreationTimestamp::class),
+                updateTimestamp = declaration.hasAnnotation(UpdateTimestamp::class),
             ).also {
                 val uniqueIndexName = declaration.getAnnotation(Unique::class)?.getArgumentAs<String>()
                 if (uniqueIndexName != null) {
@@ -214,7 +257,7 @@ class KspProcessor(
             }
         }
 
-        val columns = (props - ignoredProps - referenceProps - backReferenceProps).associateWith { declaration ->
+        val columns = (props - ignoredProps.toSet() - referenceProps.toSet() - backReferenceProps.toSet()).associateWith { declaration ->
             computeProp(declaration)
         }
 
@@ -251,44 +294,7 @@ class KspProcessor(
         }
 
         // Process indexes from @Table annotation
-        val indexes = tableIndexes.mapIndexedNotNull { index, indexAnnotation ->
-            if (indexAnnotation is KSAnnotation) {
-                val indexNameRaw = indexAnnotation.arguments.find { it.name?.asString() == "name" }?.value as? String ?: ""
-                val columnList = indexAnnotation.arguments.find { it.name?.asString() == "columnList" }?.value as? String
-                    ?: throw ProcessorException("Index columnList is required", entityClass)
-                
-                // Validate columnList is not empty
-                if (columnList.isBlank()) {
-                    throw ProcessorException("Index columnList must not be empty", entityClass)
-                }
-                
-                // Parse column names from comma-separated string
-                val columnNames = columnList.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                
-                if (columnNames.isEmpty()) {
-                    throw ProcessorException("Index columnList must contain at least one column name", entityClass)
-                }
-                
-                // Generate index name if not provided
-                val indexName = if (indexNameRaw.isBlank()) {
-                    "idx_${tableName}_${index + 1}"
-                } else {
-                    indexNameRaw
-                }
-                
-                val unique = indexAnnotation.arguments.find { it.name?.asString() == "unique" }?.value as? Boolean ?: false
-                
-                // Validate that all columns exist
-                val columnMap = columns.values.associateBy { it.columnName }
-                columnNames.forEach { colName ->
-                    if (!columnMap.containsKey(colName)) {
-                        throw ProcessorException("Column '$colName' in index '$indexName' does not exist in table '$tableName'", entityClass)
-                    }
-                }
-                
-                IndexInfo(indexName, columnNames, unique)
-            } else null
-        }
+        val indexes = getIndexes(entityClass, columns)
 
         return EntityModel(
             declaration = entityClass,
@@ -304,13 +310,127 @@ class KspProcessor(
         )
     }
 
-    private fun KSAnnotated?.hasTransientAnnotation(): Boolean =
-        this?.annotations?.any {
+    private fun getIndexes(
+        entityClass: KSClassDeclaration,
+        columns: Map<KSPropertyDeclaration, ColumnModel>
+    ): List<IndexInfo> {
+
+        val tableIndexes = (entityClass.getAnnotation(Table::class)?.valueByKey("indexes") as? List<*>)
+            ?.filterIsInstance<KSAnnotation>()
+            ?: return emptyList()
+        
+        // validate each index and collect column names for hash generation
+        val allColumnNames = columns.values.map { it.columnName }.toSet()
+        val processedIndexes = tableIndexes.map { indexAnnotation ->
+            val explicitName = (indexAnnotation.valueByKey("name") as? String).takeUnless { it.isNullOrBlank() }
+
+            val unique = indexAnnotation.valueByKey("unique") as? Boolean ?: false
+
+            val columnList   = (indexAnnotation.valueByKey("columnList") as? String).takeUnless { it.isNullOrBlank() }
+                ?: throw ProcessorException("Index columnList must not be empty", entityClass)
+
+            val columnNames = columnList.split(",").map { it.trim() }.filter { it.isNotEmpty() }.takeIf { it.isNotEmpty() }
+                ?: throw ProcessorException("Index columnList must contain at least one column name", entityClass)
+
+            // validate column's existence
+            columnNames.filter { ! allColumnNames.contains(it) }.takeIf { it.isNotEmpty() }?.let { columnsNotExist ->
+                val indexNameForError = explicitName ?: "auto-generated"
+                throw ProcessorException(
+                    "Columns(${columnsNotExist}) in index($indexNameForError) does not exist in entity '${entityClass.simpleName}'",
+                    entityClass
+                )
+            }
+
+            // Generate index name: use explicit name or generate hash-based name
+            val indexName = explicitName ?: "idx_${generateHashId(columnNames)}"
+
+            IndexInfo(indexName, columnNames, unique)
+        }
+        
+        // Check for duplicate index names (including auto-generated ones)
+        val indexNames = processedIndexes.map { it.name }
+        val duplicateNames = indexNames.groupingBy { it }.eachCount().filter { it.value > 1 }.keys
+        if (duplicateNames.isNotEmpty()) {
+            throw ProcessorException(
+                "Duplicate index names found: ${duplicateNames.joinToString(", ")}. Index names must be unique.",
+                entityClass
+            )
+        }
+        
+        return processedIndexes
+    }
+
+    /**
+     * Generates a 10-character hash ID from column names.
+     * The hash is deterministic: same column names in the same order will always produce the same hash.
+     * Uses SHA-256 and converts to base36 (0-9, a-z) for a 10-character identifier.
+     */
+    private fun generateHashId(columnNames: List<String>): String {
+        // Create a deterministic input string from column names (order matters)
+        val input = columnNames.joinToString(",")
+        
+        // Generate SHA-256 hash
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val hashBytes = digest.digest(input.toByteArray())
+        
+        // Use first 6 bytes (48 bits) to ensure we have enough entropy for 10 base36 characters
+        // Convert to BigInteger for base36 conversion
+        val bigInt = java.math.BigInteger(1, hashBytes.copyOfRange(0, 6))
+        
+        // Convert to base36 (0-9, a-z)
+        val base36 = bigInt.toString(36)
+        
+        // Pad or truncate to exactly 10 characters
+        return when {
+            base36.length < 10 -> base36.padStart(10, '0')
+            base36.length > 10 -> base36.take(10)
+            else -> base36
+        }
+    }
+
+    private fun validateTimestampAnnotation(declaration: KSPropertyDeclaration) {
+        val hasCreationTimestamp = declaration.hasAnnotation(CreationTimestamp::class)
+        val hasUpdateTimestamp   = declaration.hasAnnotation(UpdateTimestamp::class)
+
+        // Validate timestamp annotations can only be applied to DateTime types
+        if (hasCreationTimestamp || hasUpdateTimestamp) {
+            val columnType = declaration.type.toTypeName()
+            val isDateTimeType = when ((columnType as? ClassName)?.canonicalName) {
+                "java.util.Date",
+                "java.time.LocalDate",
+                "java.time.LocalDateTime",
+                "java.time.Instant",
+                "kotlinx.datetime.LocalDate",
+                "kotlinx.datetime.LocalDateTime",
+                "kotlin.time.Instant" -> true
+                else -> false
+            }
+            if (!isDateTimeType) {
+                val annotationName = if (hasCreationTimestamp) "@CreationTimestamp" else "@UpdateTimestamp"
+                throw ProcessorException(
+                    "$annotationName can only be applied to DateTime types (Date, LocalDate, LocalDateTime, Instant). Found: $columnType",
+                    declaration
+                )
+            }
+        }
+    }
+
+    private fun getTableName(entityClass: KSClassDeclaration): String {
+        val nameFromTableAnnotation  = entityClass.getAnnotation(Table::class)?.valueByKey("name")?.toString()?.takeUnless { it.isBlank() }
+        val nameFromEntityAnnotation = entityClass.getAnnotation(Entity::class)?.valueByKey("name")?.toString()?.takeUnless { it.isBlank() }
+        return nameFromTableAnnotation ?: nameFromEntityAnnotation ?: entityClass.toClassName().simpleName
+    }
+
+
+    private fun KSAnnotated?.hasTransientAnnotation(): Boolean {
+        return this?.annotations?.any {
             when (it.annotationType.resolve().declaration.qualifiedName?.asString()) {
-                "kotlin.jvm.Transient", "kotlinx.serialization.Transient" -> true
+                "kotlin.jvm.Transient",
+                "kotlinx.serialization.Transient" -> true
                 else -> false
             }
         } == true
+    }
 
     private fun validate(models: Iterable<EntityModel>) {
         models.forEach { table ->
@@ -319,4 +439,13 @@ class KspProcessor(
             }
         }
     }
+
+    private fun KSAnnotation.valueByKey(name: String): Any? {
+        return this.arguments.firstOrNull { it.name?.asString() == name }?.value
+    }
+
+    private fun KSPropertyDeclaration.hasAnnotation(annotation: KClass<*>): Boolean {
+        return this.getAnnotation(annotation) != null
+    }
+
 }

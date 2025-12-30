@@ -100,7 +100,9 @@ data class ColumnModel(
     val foreignKey: FKInfo?,
     val attrs: List<FieldAttrs>,
     val converter: ConverterInfo? = null,
-    val isMutable: Boolean = false
+    val isMutable: Boolean = false,
+    val creationTimestamp: Boolean = false,
+    val updateTimestamp: Boolean = false
 ) {
     override fun toString(): String {
         return "$nameInDsl: $type"

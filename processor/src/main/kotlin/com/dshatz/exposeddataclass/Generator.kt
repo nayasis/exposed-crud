@@ -30,7 +30,21 @@ class Generator(
         models.values.forEach { calculateColumnTypes(it) }
         return models.values.associateWith { tableModel ->
             val fileSpec = FileSpec.builder(tableModel.tableClass)
-
+            
+            // Add imports for timestamp generation if needed
+            val needsKotlinxDateTimeImport = tableModel.columns.any { 
+                it.creationTimestamp || it.updateTimestamp 
+            } && tableModel.columns.any { 
+                val type = it.type.copy(nullable = false)
+                (type as? ClassName)?.canonicalName in listOf(
+                    "kotlinx.datetime.LocalDate",
+                    "kotlinx.datetime.LocalDateTime"
+                )
+            }
+            if (needsKotlinxDateTimeImport) {
+                fileSpec.addImport("kotlinx.datetime", "toLocalDateTime")
+                fileSpec.addImport("kotlinx.datetime", "TimeZone")
+            }
 
             validateForeignKeyAnnotations(tableModel)
             validateReferenceAnnotations(tableModel)
@@ -216,10 +230,44 @@ class Generator(
             .addModifiers(KModifier.OVERRIDE)
             .addParameter(ParameterSpec.builder("update", UpdateBuilder::class.parameterizedBy(Number::class)).build())
             .addParameter(ParameterSpec("data", dataType))
-        model.columns.filterNot { excludeAutoIncrement && it.autoIncrementing }.forEach {
-            spec.addStatement("update[%N] = data.%L", it.nameInDsl, it.nameInEntity)
+        
+        model.columns.filterNot { excludeAutoIncrement && it.autoIncrementing }.forEach { column ->
+            val shouldSetTimestamp = if (excludeAutoIncrement) {
+                // writeExceptAutoIncrementing (insert): set if CreationTimestamp is present
+                // (if both are present, creationTimestamp will be true, so it will be set)
+                column.creationTimestamp
+            } else {
+                // write (update): set if UpdateTimestamp is present
+                // (if both are present, updateTimestamp will be true, so it will be set)
+                column.updateTimestamp
+            }
+            
+            if (shouldSetTimestamp) {
+                // Generate appropriate now() call based on DateTime type
+                val nowCode = generateNowCode(column.type)
+                val nowVarName = "${column.nameInEntity}Now"
+                spec.addStatement("val %N = %L", nowVarName, nowCode)
+                spec.addStatement("update[%N] = %N", column.nameInDsl, nowVarName)
+                spec.addStatement("data.%L = %N", column.nameInEntity, nowVarName)
+            } else {
+                spec.addStatement("update[%N] = data.%L", column.nameInDsl, column.nameInEntity)
+            }
         }
         return spec.build()
+    }
+    
+    private fun generateNowCode(type: TypeName): CodeBlock {
+        val nonNullType = type.copy(nullable = false)
+        return when ((nonNullType as? ClassName)?.canonicalName) {
+            "java.util.Date" -> CodeBlock.of("java.util.Date()")
+            "java.time.LocalDate" -> CodeBlock.of("java.time.LocalDate.now()")
+            "java.time.LocalDateTime" -> CodeBlock.of("java.time.LocalDateTime.now()")
+            "java.time.Instant" -> CodeBlock.of("java.time.Instant.now()")
+            "kotlinx.datetime.LocalDate" -> CodeBlock.of("kotlin.time.Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date")
+            "kotlinx.datetime.LocalDateTime" -> CodeBlock.of("kotlin.time.Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())")
+            "kotlin.time.Instant" -> CodeBlock.of("kotlin.time.Clock.System.now()")
+            else -> throw ProcessorException("Unsupported DateTime type for timestamp: $type", models.values.firstOrNull()?.declaration ?: throw IllegalStateException())
+        }
     }
 
     private fun generatePKMaker(model: EntityModel): FunSpec {

@@ -64,8 +64,7 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
                 val id = table.insertAndGetId {
                     table.writeExceptAutoIncrementing(it, data)
                 }
-                @Suppress("UNCHECKED_CAST")
-                table.setId(data, id.value as ID)
+                findById(id.value as ID) ?: error("failed to retrieve inserted entity with ID: ${id.value}")
             } else -> {
                 table.insert {
                     table.writeExceptAutoIncrementing(it, data)

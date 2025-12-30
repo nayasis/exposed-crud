@@ -2,7 +2,7 @@ package com.dshatz.exposed_crud
 
 /**
  * Defines an index on a table.
- * @param name The name of the index. If empty, will be auto-generated as idx_{tableName}_{sequence}.
+ * @param name The name of the index. If empty, will be auto-generated as idx_{hashId} where hashId is a 10-character hash based on column names.
  * @param columnList Comma-separated string of column names to include in the index. Must not be empty.
  * @param unique Whether the index should be unique (default: false).
  */
