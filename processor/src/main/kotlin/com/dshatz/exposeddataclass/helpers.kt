@@ -1,11 +1,16 @@
 package com.dshatz.exposeddataclass
 
 import com.dshatz.exposed_crud.Id
+import com.dshatz.exposed_crud.IdGenerator
 import com.dshatz.exposed_crud.Ignore
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.WildcardTypeName
+import com.squareup.kotlinpoet.asTypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import kotlin.reflect.KClass
 
@@ -111,4 +116,12 @@ fun KSPropertyDeclaration.hasIgnoreMarker(): Boolean {
 
 fun KSClassDeclaration.findIdProperties(): List<Pair<KSPropertyDeclaration, KSAnnotation>> {
     return this.findPropsWithAnnotation(Id::class)
+}
+
+fun KClass<*>.asKClassTypeName(nullable: Boolean = false): TypeName {
+    return KClass::class.asTypeName().parameterizedBy(
+        WildcardTypeName.producerOf(
+            this.asTypeName().parameterizedBy(WildcardTypeName.producerOf(Any::class.asTypeName()))
+        )
+    ).copy(nullable = nullable)
 }

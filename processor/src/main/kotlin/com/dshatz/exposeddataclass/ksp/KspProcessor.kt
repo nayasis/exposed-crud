@@ -10,7 +10,6 @@ import com.dshatz.exposed_crud.DefaultText
 import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.ForeignKey
 import com.dshatz.exposed_crud.Id
-import com.dshatz.exposed_crud.Ignore
 import com.dshatz.exposed_crud.Json
 import com.dshatz.exposed_crud.JsonFormat
 import com.dshatz.exposed_crud.Jsonb
@@ -257,7 +256,11 @@ class KspProcessor(
             FKInfo(remoteType, remoteColumn)
         }
 
-        val autoIncrement = declaration.getAnnotation(Id::class)?.getArgumentAs<Boolean>() == true
+        val idAnnotation = declaration.getAnnotation(Id::class)
+        val autoIncrement = idAnnotation?.valueByKey("autoGenerate") as? Boolean ?: false
+        val idGenerator = (idAnnotation?.valueByKey("generator") as? KSType)?.toClassName()?.takeUnless{
+            it.canonicalName in setOf("kotlin.Nothing","java.lang.Void")
+        }
 
         val converter = getConverter(declaration)
 
@@ -305,6 +308,7 @@ class KspProcessor(
             isMutable = declaration.isMutable,
             creationTimestamp = declaration.hasAnnotation(CreationTimestamp::class),
             updateTimestamp = declaration.hasAnnotation(UpdateTimestamp::class),
+            idGenerator = idGenerator,
         ).also {
             declaration.getAnnotation(Unique::class)?.getArgumentAs<String>()?.let { uniqueIndexName ->
                 uniqueAnnotations.getOrPut(uniqueIndexName) { mutableListOf() }.add(it)

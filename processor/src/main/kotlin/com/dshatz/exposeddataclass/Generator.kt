@@ -1,17 +1,47 @@
 package com.dshatz.exposeddataclass
 
+import com.dshatz.exposed_crud.IdGenerator
 import com.dshatz.exposed_crud.typed.IEntityTable
 import com.dshatz.exposeddataclass.EntityModel.Companion.crudRepositoryType
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.BOOLEAN
+import com.squareup.kotlinpoet.BYTE
+import com.squareup.kotlinpoet.BYTE_ARRAY
+import com.squareup.kotlinpoet.CHAR
+import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.DOUBLE
+import com.squareup.kotlinpoet.FLOAT
+import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.INT
+import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.LIST
+import com.squareup.kotlinpoet.LONG
+import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.SHORT
+import com.squareup.kotlinpoet.STRING
+import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.U_BYTE
+import com.squareup.kotlinpoet.U_INT
+import com.squareup.kotlinpoet.U_LONG
+import com.squareup.kotlinpoet.U_SHORT
+import com.squareup.kotlinpoet.WildcardTypeName
+import com.squareup.kotlinpoet.asClassName
+import com.squareup.kotlinpoet.asTypeName
+import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.ColumnSet
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
-import org.jetbrains.exposed.v1.core.*
-import org.jetbrains.exposed.v1.core.Column
-import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.statements.UpdateBuilder
+import kotlin.reflect.KClass
 
 class Generator(
     private val models: Map<ClassName, EntityModel>,
@@ -66,8 +96,26 @@ class Generator(
                 tableDef.addProperty(it.generateProp(tableModel))
             }
 
-
             primaryKey?.build()?.let(tableDef::addProperty)
+
+            // idGenerator
+            PropertySpec.builder("idGenerator", IdGenerator::class.asKClassTypeName(true)).apply {
+                if (tableModel.primaryKey is PrimaryKey.Simple && tableModel.primaryKey.prop.idGenerator != null) {
+                    initializer(CodeBlock.of("%T::class", tableModel.primaryKey.prop.idGenerator))
+                } else {
+                    initializer(CodeBlock.of("null"))
+                }
+            }.build().let(tableDef::addProperty)
+
+            // autoGenerate
+            PropertySpec.builder("autoGenerate", Boolean::class.asTypeName()).apply {
+                if (tableModel.primaryKey is PrimaryKey.Simple) {
+                    initializer(CodeBlock.of("%L", tableModel.primaryKey.prop.autoIncrementing))
+                } else {
+                    initializer(CodeBlock.of("%L", false))
+                }
+            }.build().let(tableDef::addProperty)
+
             tableDef.addFunction(tableModel.generateToEntityConverter())
             tableDef.addFunction(generateUpdateApplicator(tableModel, true))
             tableDef.addFunction(generateUpdateApplicator(tableModel, false))
@@ -510,7 +558,16 @@ class Generator(
             } else {
                 val typeFun = exposedTypeFun(columnName)
                 initializer.add(typeFun)
-                if (autoIncrementing) initializer.add(".autoIncrement()")
+                // Only add autoIncrement() for numeric types and UUID, not for String or other types
+                // Check if type is one of the auto-incrementable types: Int, Long, UInt, ULong, UUID
+                val nonNullType = type.copy(nullable = false)
+                val isAutoIncrementableType = when ((nonNullType as? ClassName)?.canonicalName) {
+                    "kotlin.Int", "kotlin.Long", "kotlin.UInt", "kotlin.ULong", "java.util.UUID" -> true
+                    else -> false
+                }
+                if (autoIncrementing && isAutoIncrementableType) {
+                    initializer.add(".autoIncrement()")
+                }
                 default?.let { initializer.add(".default(%L)", it) }
                 if (type.isNullable) initializer.add(".nullable()")
                 if (this in tableModel.primaryKey) {

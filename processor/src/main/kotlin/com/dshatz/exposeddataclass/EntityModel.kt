@@ -102,7 +102,8 @@ data class ColumnModel(
     val converter: ConverterInfo? = null,
     val isMutable: Boolean = false,
     val creationTimestamp: Boolean = false,
-    val updateTimestamp: Boolean = false
+    val updateTimestamp: Boolean = false,
+    val idGenerator: ClassName? = null
 ) {
     override fun toString(): String {
         return "$nameInDsl: $type"

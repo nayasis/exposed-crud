@@ -11,19 +11,38 @@ import org.jetbrains.exposed.v1.core.dao.id.UIntIdTable
 import org.jetbrains.exposed.v1.core.dao.id.ULongIdTable
 import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.statements.InsertStatement
 import org.jetbrains.exposed.v1.core.statements.UpdateStatement
 import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.SizedIterable
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
-import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.mapLazy
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
+import com.dshatz.exposed_crud.IdGenerator
+import kotlin.reflect.KClass
+import kotlin.reflect.full.createInstance
+import kotlin.reflect.full.memberProperties
 
 data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<ColumnSet> = emptyList()) where T: IdTable<ID>, T: IEntityTable<E, ID> {
+
+    private val isAutoIncrementingTable =
+        table is IntIdTable   ||
+        table is UIntIdTable  ||
+        table is LongIdTable  ||
+        table is ULongIdTable ||
+        table is UUIDTable
+
+    private val autoGenerate = runCatching {
+        table::class.memberProperties.find { it.name == "autoGenerate" }?.call(table) as Boolean
+    }.getOrElse { false }
+
+    val idGenerator = runCatching {
+        val generatorClass = table::class.memberProperties.find { it.name == "idGenerator" }?.call(table) as? KClass<*>
+        @Suppress("UNCHECKED_CAST")
+        generatorClass?.createInstance() as? IdGenerator<E>
+    }.getOrNull()
 
     private fun selectWithJoins(): Query {
         return if (related.isEmpty()) {
@@ -57,26 +76,32 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
 
     /**
      * Insert a new entity into the database.
-     * Automatically handles ID generation for auto-incrementing tables or uses the provided ID for other table types.
-     * 
+     *
      * @return inserted entity
      */
     fun create(data: E): E {
-        return when (table) {
-            is IntIdTable, is UIntIdTable, is LongIdTable, is ULongIdTable, is UUIDTable -> {
-                // Auto-incrementing ID: exclude ID column and let database generate it
+        return when {
+            autoGenerate && idGenerator != null -> {
+
+                @Suppress("UNCHECKED_CAST")
+                val id = runCatching { idGenerator!!.generate(data) }.onFailure { e ->
+                    throw IllegalStateException("Cannot generate id", e)
+                }.getOrThrow() as ID
+
+                table.setId(data, id)
+                table.insert {
+                    table.write(it, data)
+                }
+                data
+            }
+            autoGenerate && isAutoIncrementingTable -> {
                 val id = table.insertAndGetId {
                     table.writeExceptAutoIncrementing(it, data)
-                }
-                // writeExceptAutoIncrementing already updates the data object's timestamp fields directly
-                // Set the ID and return the same object
-                @Suppress("UNCHECKED_CAST")
-                table.setId(data, id.value as ID)
+                }.value
+                table.setId(data, id)
                 data
-            } else -> {
-                // Non-auto-incrementing ID (e.g., String, composite keys): include all columns
-                // Use writeExceptAutoIncrementing to correctly set CreationTimestamp fields (not UpdateTimestamp)
-                // Use insert + findById instead of insertReturning for better database compatibility (for example, H2 doesn't support insertReturning)
+            }
+            else -> {
                 table.insert {
                     table.writeExceptAutoIncrementing(it, data)
                 }
