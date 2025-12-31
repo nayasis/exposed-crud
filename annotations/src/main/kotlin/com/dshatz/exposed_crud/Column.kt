@@ -6,4 +6,4 @@ package com.dshatz.exposed_crud
  * @param name column name to be used in the database.
  */
 @Target(AnnotationTarget.PROPERTY)
-annotation class Column(val name: String)
+annotation class Column(val name: String = "")

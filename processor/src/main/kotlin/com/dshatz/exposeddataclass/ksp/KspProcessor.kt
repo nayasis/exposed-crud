@@ -248,7 +248,7 @@ class KspProcessor(
         } else {
             declaration.getAnnotation(Default::class)?.getArgumentAs<String>()?.let { CodeBlock.of("%L", it) }
         }
-        val columnName = columnAnnotation?.getArgumentAs<String>() ?: name.decapitate()
+        val columnName = columnAnnotation?.getArgumentAs<String>()?.takeUnless { it.isBlank() } ?: name.decapitate()
 
         val foreignKey = declaration.getAnnotation(ForeignKey::class)?.let {
             val remoteType = it.getArgumentAs<KSType>()?.toTypeName()!!
