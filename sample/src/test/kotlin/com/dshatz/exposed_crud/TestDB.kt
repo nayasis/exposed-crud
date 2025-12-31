@@ -156,7 +156,7 @@ class TestDB {
         transaction(db) {
             val directorId = DirectorTable.repo.create(Director(name = "Alfred")).id
             val categoryId = CategoryTable.repo.create(Category()).id
-            val lv = LanguageTable.repo.insert(Language("lv"))
+            val lv = LanguageTable.repo.create(Language("lv"))
             println(
                 CategoryTranslationsTable.repo.createWithRelated(
                     CategoryTranslations(

@@ -56,12 +56,15 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
     }
 
     /**
-     * Perform an `INSERT` on all columns except ones marked as auto-incrementing.
-     * @return inserted entity.
+     * Insert a new entity into the database.
+     * Automatically handles ID generation for auto-incrementing tables or uses the provided ID for other table types.
+     * 
+     * @return inserted entity
      */
     fun create(data: E): E {
         return when (table) {
             is IntIdTable, is UIntIdTable, is LongIdTable, is ULongIdTable, is UUIDTable -> {
+                // Auto-incrementing ID: exclude ID column and let database generate it
                 val id = table.insertAndGetId {
                     table.writeExceptAutoIncrementing(it, data)
                 }
@@ -71,6 +74,9 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
                 table.setId(data, id.value as ID)
                 data
             } else -> {
+                // Non-auto-incrementing ID (e.g., String, composite keys): include all columns
+                // Use writeExceptAutoIncrementing to correctly set CreationTimestamp fields (not UpdateTimestamp)
+                // Use insert + findById instead of insertReturning for better database compatibility (for example, H2 doesn't support insertReturning)
                 table.insert {
                     table.writeExceptAutoIncrementing(it, data)
                 }
@@ -78,16 +84,6 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
                 findById(pk) ?: error("failed to retrieve inserted entity with PK: $pk")
             }
         }
-    }
-
-    /**
-     * Perform an `INSERT` on all columns including columns marked as auto-incrementing.
-     * @return inserted entity (the same object passed in, with ID and timestamp fields updated).
-     */
-    fun insert(data: E): E {
-        return table.insertReturning {
-            table.write(it, data)
-        }.first().let(::toEntity)
     }
 
     /**

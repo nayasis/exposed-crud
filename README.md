@@ -175,28 +175,30 @@ val moviesWithDirectors: List<Movie> = repo.withRelated(DirectorTable).selectAll
 ```
 
 ### Insert
-There are 2 ways to perform inserts.
+`repo.create()` automatically determines the appropriate insert strategy based on the table type:
 
-`repo.create()` will do an insert ignoring the values of auto-incrementing columns. This is useful when receiving a newly created object from the frontend where the ID is not known and is set to some arbitrary value like 0 or -1.
+- **For tables with auto-incrementing IDs** (IntIdTable, UIntIdTable, LongIdTable, ULongIdTable, UUIDTable):
+  - Inserts excluding auto-incrementing columns
+  - Database generates the ID automatically
+  - Useful when receiving a newly created object from the frontend where the ID is not known and is set to some arbitrary value like 0 or -1
 
-`repo.insert()` will do an insert with all columns.
-
-If your Entity has no auto-incrementing columns, `insert()` and `create()` behave identically.
+- **For tables without auto-incrementing IDs** (e.g., String IDs, composite keys):
+  - Inserts all columns including the ID
+  - The provided ID value is used as-is
 
 ```kotlin
+// Auto-incrementing ID (LongIdTable)
 val movie = Movie(
-   id = -1,
+   id = -1,  // This value is ignored
    title = "Die Hard",
    originalTitle = null,
    directorId = 1 
 )
-repo.create(movie) // Movie is inserted with an auto-generated id.
-repo.insert(movie) // Movie is inserted with an id = -1.
-```
+val inserted = repo.create(movie) // Movie is inserted with an auto-generated id.
 
-Additionally, `createReturning` and `insertReturning` can be used to get back what was inserted.
-```kotlin
-val insertedMovie: Movie = repo.createReturning(movie)
+// Non-auto-incrementing ID (String)
+val language = Language("lv")
+val insertedLang = repo.create(language) // Language is inserted with code = "lv"
 ```
 
 ### Insert with related
