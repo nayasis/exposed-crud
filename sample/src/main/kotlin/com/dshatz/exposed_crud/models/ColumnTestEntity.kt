@@ -20,3 +20,4 @@ data class ColumnTestEntity(
     var normalColumn: String = ""  // 어노테이션 없음 - 프로퍼티 이름 기반으로 컬럼명 생성
 )
 
+

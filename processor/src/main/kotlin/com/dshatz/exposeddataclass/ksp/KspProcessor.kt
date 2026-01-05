@@ -264,13 +264,25 @@ class KspProcessor(
 
         val converter = getConverter(declaration)
 
-        val columnType = converter?.targetType ?: declaration.type.toTypeName()
-        val isStringProp = columnType.copy(nullable = false) == STRING
+        // Validate text column annotations (Varchar, Text, MediumText, LargeText)
+        // - use converter's targetType if present, otherwise use the original property type to check if it's String
+        val columnType = (converter?.targetType ?: declaration.type.toTypeName()).copy(nullable = false)
+        val isStringProp = columnType == STRING || (columnType is ClassName && columnType.canonicalName == "kotlin.String")
         val textProps = listOf(Collate::class, Varchar::class, Text::class, MediumText::class, LargeText::class).mapNotNull {
             declaration.getAnnotation(it)?.also {
-                if (!isStringProp) throw ProcessorException(it.annotationType.toTypeName().toString() + " can only be used on a String property or a property with a String converter target type.", it)
+                // Throw error if not String type
+                if (!isStringProp) {
+                    val propertyName = declaration.getPropName()
+                    val entityName   = (declaration.parentDeclaration as? KSClassDeclaration)?.simpleName?.asString() ?: "Unknown"
+                    throw ProcessorException(
+                        "${it.annotationType.toTypeName()} can only be used on a String property or a property with a String converter target type. " +
+                        "($entityName -> $propertyName)",
+                        it
+                    )
+                }
             }
         }
+
         val otherProps = listOf(Json::class, Jsonb::class).mapNotNull {
             declaration.getAnnotation(it)
         }.mapNotNull {

@@ -542,13 +542,13 @@ class Generator(
                 if (type.isNullable) {
                     // For nullable entity types, make the base column nullable first, then transform
                     initializer.add(".nullable()")
-                    initializer.add(".transform({ it: %T? -> %L.convertToEntityAttribute(it) }, { it: %T? -> %L.convertToDatabaseColumn(it) })", 
+                    initializer.add(".transform({ it: %T? -> %L.convertToEntityAttribute(it) }, { it: %T? -> %L.convertToDatabaseColumn(it) })",
                         targetTypeNonNull, converterInstance, entityTypeNonNull, converterInstance)
                 } else {
                     // For non-nullable entity types, transform without nullable
                     // But if converter target type is nullable, we need to handle it in transform
                     if (converter.targetType.isNullable) {
-                        initializer.add(".transform({ it: %T? -> %L.convertToEntityAttribute(it) }, { %L.convertToDatabaseColumn(it) })", 
+                        initializer.add(".transform({ it: %T? -> %L.convertToEntityAttribute(it) }, { %L.convertToDatabaseColumn(it) })",
                             targetTypeNonNull, converterInstance, converterInstance)
                     } else {
                         initializer.add(".transform({ %L.convertToEntityAttribute(it) }, { %L.convertToDatabaseColumn(it) })", converterInstance, converterInstance)
