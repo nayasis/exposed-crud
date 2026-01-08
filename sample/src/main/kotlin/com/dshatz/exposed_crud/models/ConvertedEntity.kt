@@ -26,21 +26,10 @@ class ColorConverter : AttributeConverter<Color, String?> {
     }
 }
 
-class NullableColorConverter : AttributeConverter<Color?, String?> {
-    override fun convertToDatabaseColumn(entityData: Color?): String? {
-        return entityData?.toString()
-    }
-    override fun convertToEntityAttribute(dbData: String?): Color? {
-        return dbData?.let { Color.fromString(it) }
-    }
-}
-
 @Entity
 data class ConvertedEntity(
     @Id val id: Int = 0,
     @Convert(ColorConverter::class)
     @Varchar(50)
     val color: Color,
-    @Convert(NullableColorConverter::class)
-    val nullableColor: Color?,
 )

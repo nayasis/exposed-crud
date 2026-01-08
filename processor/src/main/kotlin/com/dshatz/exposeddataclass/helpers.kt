@@ -1,9 +1,13 @@
 package com.dshatz.exposeddataclass
 
 import com.dshatz.exposed_crud.Id
-import com.dshatz.exposed_crud.IdGenerator
 import com.dshatz.exposed_crud.Ignore
-import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSAnnotation
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSNode
+import com.google.devtools.ksp.symbol.KSPropertyDeclaration
+import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -118,10 +122,16 @@ fun KSClassDeclaration.findIdProperties(): List<Pair<KSPropertyDeclaration, KSAn
     return this.findPropsWithAnnotation(Id::class)
 }
 
-fun KClass<*>.asKClassTypeName(nullable: Boolean = false): TypeName {
+fun KClass<*>.asKClassTypeName(): TypeName {
     return KClass::class.asTypeName().parameterizedBy(
         WildcardTypeName.producerOf(
             this.asTypeName().parameterizedBy(WildcardTypeName.producerOf(Any::class.asTypeName()))
         )
-    ).copy(nullable = nullable)
+    )
 }
+
+val TypeName.notNull: TypeName
+    get() = this.copy(nullable = false)
+
+val TypeName.nullable: TypeName
+    get() = this.copy(nullable = true)

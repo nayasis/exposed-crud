@@ -41,6 +41,7 @@ import com.dshatz.exposeddataclass.getPropName
 import com.dshatz.exposeddataclass.hasAnnotation
 import com.dshatz.exposeddataclass.hasIgnoreMarker
 import com.dshatz.exposeddataclass.hasTransientMarker
+import com.dshatz.exposeddataclass.notNull
 import com.dshatz.exposeddataclass.parse
 import com.dshatz.exposeddataclass.valueByKey
 import com.google.devtools.ksp.processing.CodeGenerator
@@ -201,7 +202,7 @@ class KspProcessor(
             val baseType = prop.type.run {
                 if (this is ParameterizedTypeName) this.rawType
                 else this
-            }.copy(nullable = false)
+            }.notNull
             val ref = ReferenceInfo.Reverse(
                 related = declaration.getAnnotation(BackReference::class)?.getArgumentAs<KSType>(0)?.toTypeName()!!,
                 isMany = baseType == LIST
@@ -243,7 +244,7 @@ class KspProcessor(
         val type = declaration.type.toTypeName()
         val columnAnnotation = declaration.getAnnotation(Column::class)
 
-        val default = if (type.copy(nullable = false) == STRING) {
+        val default = if (type.notNull == STRING) {
             declaration.getAnnotation(DefaultText::class)?.getArgumentAs<String>()?.let { CodeBlock.of("%S", it) }
         } else {
             declaration.getAnnotation(Default::class)?.getArgumentAs<String>()?.let { CodeBlock.of("%L", it) }
@@ -266,7 +267,7 @@ class KspProcessor(
 
         // Validate text column annotations (Varchar, Text, MediumText, LargeText)
         // - use converter's targetType if present, otherwise use the original property type to check if it's String
-        val columnType = (converter?.targetType ?: declaration.type.toTypeName()).copy(nullable = false)
+        val columnType = (converter?.dbType ?: declaration.type.toTypeName()).notNull
         val isStringProp = columnType == STRING || (columnType is ClassName && columnType.canonicalName == "kotlin.String")
         val textProps = listOf(Collate::class, Varchar::class, Text::class, MediumText::class, LargeText::class).mapNotNull {
             declaration.getAnnotation(it)?.also {
@@ -328,26 +329,22 @@ class KspProcessor(
         }
     }
 
-
     private fun getConverter(declaration: KSPropertyDeclaration): ConverterInfo? {
         return declaration.getAnnotation(Convert::class)?.let {
-            val converterClass = it.getArgumentAs<KSType>(0)!!
-            val converterDeclaration = converterClass.declaration as KSClassDeclaration
-            val attributeConverterQualifiedName = AttributeConverter::class.qualifiedName
+            val converterClass         = it.getArgumentAs<KSType>(0)!!
+            val converterDeclaration   = converterClass.declaration as KSClassDeclaration
             val attributeConverterType = converterDeclaration.superTypes.firstOrNull { superType ->
-                try {
-                    val resolved = superType.resolve()
-                    resolved.declaration.qualifiedName?.asString() == attributeConverterQualifiedName
-                } catch (e: Exception) {
-                    false
-                }
+                runCatching {
+                    superType.resolve().declaration.qualifiedName?.asString() == AttributeConverter::class.qualifiedName
+                }.getOrDefault(false)
             }?.resolve() ?: throw ProcessorException(
                 "Could not find AttributeConverter supertype for converter",
                 declaration
             )
 
-            val targetType = attributeConverterType.arguments[1].type!!.resolve().toTypeName()
-            ConverterInfo(converterClass.toTypeName(), targetType)
+            val entityType = attributeConverterType.arguments[0].type!!.resolve().toTypeName()
+            val dbType     = attributeConverterType.arguments[1].type!!.resolve().toTypeName()
+            ConverterInfo(converterClass.toTypeName(), entityType, dbType)
         }
     }
 

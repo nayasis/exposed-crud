@@ -20,7 +20,6 @@ class TextColumnWithConverterTest {
     fun init() {
         db = Database.connect(
             "jdbc:h2:mem:text_column_converter_test_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY",
-            "org.h2.Driver"
         )
         transaction(db) {
             SchemaUtils.drop(TextColumnWithConverterEntityTable)
@@ -46,7 +45,6 @@ class TextColumnWithConverterTest {
             entity.textField?.value shouldBe "Text"
             entity.varcharField?.value shouldBe "Varchar"
 
-            // 조회 테스트
             val found = TextColumnWithConverterEntityTable.repo.findById(entity.id)
             found shouldBe entity
         }
@@ -69,7 +67,6 @@ class TextColumnWithConverterTest {
             entity.textField shouldBe null
             entity.varcharField shouldBe null
 
-            // 조회 테스트
             val found = TextColumnWithConverterEntityTable.repo.findById(entity.id)
             found shouldBe entity
         }
@@ -108,7 +105,7 @@ class TextColumnWithConverterTest {
     @Test
     fun `test all text column types are created correctly`() {
         transaction(db) {
-            // 테이블이 정상적으로 생성되었는지 확인
+            // check if the table is created correctly
             val columns = TextColumnWithConverterEntityTable.columns
             val columnNames = columns.map { it.name }.toSet()
 

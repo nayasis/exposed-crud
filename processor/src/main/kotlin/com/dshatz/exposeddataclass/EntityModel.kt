@@ -167,7 +167,7 @@ sealed class ReferenceInfo(open val related: TypeName) {
 
 data class AnnotationInfo(val cls: ClassName, val params: List<Any?>)
 
-data class ConverterInfo(val converterClass: TypeName, val targetType: TypeName)
+data class ConverterInfo(val converterClass: TypeName, val entityType: TypeName, val dbType: TypeName)
 
 data class IndexInfo(
     val name: String,

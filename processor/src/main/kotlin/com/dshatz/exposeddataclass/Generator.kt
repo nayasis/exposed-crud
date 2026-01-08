@@ -31,7 +31,6 @@ import com.squareup.kotlinpoet.U_BYTE
 import com.squareup.kotlinpoet.U_INT
 import com.squareup.kotlinpoet.U_LONG
 import com.squareup.kotlinpoet.U_SHORT
-import com.squareup.kotlinpoet.WildcardTypeName
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
 import org.jetbrains.exposed.v1.core.Column
@@ -41,7 +40,6 @@ import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.statements.UpdateBuilder
-import kotlin.reflect.KClass
 
 class Generator(
     private val models: Map<ClassName, EntityModel>,
@@ -65,7 +63,7 @@ class Generator(
             val needsKotlinxDateTimeImport = tableModel.columns.any { 
                 it.creationTimestamp || it.updateTimestamp 
             } && tableModel.columns.any { 
-                val type = it.type.copy(nullable = false)
+                val type = it.type.notNull
                 (type as? ClassName)?.canonicalName in listOf(
                     "kotlinx.datetime.LocalDate",
                     "kotlinx.datetime.LocalDateTime"
@@ -99,7 +97,7 @@ class Generator(
             primaryKey?.build()?.let(tableDef::addProperty)
 
             // idGenerator
-            PropertySpec.builder("idGenerator", IdGenerator::class.asKClassTypeName(true)).apply {
+            PropertySpec.builder("idGenerator", IdGenerator::class.asKClassTypeName().nullable).apply {
                 if (tableModel.primaryKey is PrimaryKey.Simple && tableModel.primaryKey.prop.idGenerator != null) {
                     initializer(CodeBlock.of("%T::class", tableModel.primaryKey.prop.idGenerator))
                 } else {
@@ -207,7 +205,7 @@ class Generator(
                 } else {
                     // Not a FK
                     if (converter != null) {
-                        converter.targetType
+                        converter.dbType
                     } else if (this in tableModel.primaryKey) {
                         // column part of PK
                         if (tableModel.primaryKey is PrimaryKey.Simple) {
@@ -305,8 +303,7 @@ class Generator(
     }
     
     private fun generateNowCode(type: TypeName): CodeBlock {
-        val nonNullType = type.copy(nullable = false)
-        return when ((nonNullType as? ClassName)?.canonicalName) {
+        return when ((type.notNull as? ClassName)?.canonicalName) {
             "java.util.Date" -> CodeBlock.of("java.util.Date()")
             "java.time.LocalDate" -> CodeBlock.of("java.time.LocalDate.now()")
             "java.time.LocalDateTime" -> CodeBlock.of("java.time.LocalDateTime.now()")
@@ -409,7 +406,9 @@ class Generator(
             if (it in primaryKey || it.foreignKey != null) {
                 convertingCode.addStatement("%N = row[%N].value,", it.nameInEntity, it.nameInDsl)
             } else {
-                convertingCode.addStatement("%N = row[%N],", it.nameInEntity, it.nameInDsl)
+                val usesNullableColumn = it.converter != null && it.converter.dbType.isNullable && !it.type.isNullable
+                val valueExpr = if (usesNullableColumn) "row[%N]!!" else "row[%N]"
+                convertingCode.addStatement("%N = $valueExpr,", it.nameInEntity, it.nameInDsl)
             }
         }
         val member = MemberName("com.dshatz.exposed_crud.typed", "parseReferencedEntity")
@@ -462,7 +461,9 @@ class Generator(
                 if (it in primaryKey || it.foreignKey != null) {
                     assignmentCode.addStatement("%N = row[%T.%N].value", it.nameInEntity, tableClass, it.nameInDsl)
                 } else {
-                    assignmentCode.addStatement("%N = row[%T.%N]", it.nameInEntity, tableClass, it.nameInDsl)
+                    val usesNullableColumn = it.converter != null && it.converter.dbType.isNullable && !it.type.isNullable
+                    val valueExpr = if (usesNullableColumn) "row[%T.%N]!!" else "row[%T.%N]"
+                    assignmentCode.addStatement("%N = $valueExpr", it.nameInEntity, tableClass, it.nameInDsl)
                 }
             }
             references.forEach { (column, refInfo) ->
@@ -532,36 +533,46 @@ class Generator(
 
             // Not a FK
             if (converter != null) {
-                val typeFun = exposedTypeFun(columnName, converter.targetType)
-                initializer.add(typeFun)
-                
-                val converterInstance = CodeBlock.of("%T()", converter.converterClass)
-                val targetTypeNonNull = converter.targetType.copy(nullable = false)
-                val entityTypeNonNull = type.copy(nullable = false)
-                
-                if (type.isNullable) {
-                    // For nullable entity types, make the base column nullable first, then transform
+                initializer.add(exposedTypeFun(columnName, converter.dbType))
+
+                val columnType = if (converter.dbType.isNullable || type.isNullable) {
                     initializer.add(".nullable()")
-                    initializer.add(".transform({ it: %T? -> %L.convertToEntityAttribute(it) }, { it: %T? -> %L.convertToDatabaseColumn(it) })",
-                        targetTypeNonNull, converterInstance, entityTypeNonNull, converterInstance)
-                } else {
-                    // For non-nullable entity types, transform without nullable
-                    // But if converter target type is nullable, we need to handle it in transform
-                    if (converter.targetType.isNullable) {
-                        initializer.add(".transform({ it: %T? -> %L.convertToEntityAttribute(it) }, { %L.convertToDatabaseColumn(it) })",
-                            targetTypeNonNull, converterInstance, converterInstance)
-                    } else {
-                        initializer.add(".transform({ %L.convertToEntityAttribute(it) }, { %L.convertToDatabaseColumn(it) })", converterInstance, converterInstance)
-                    }
+                    type.nullable
+                } else type
+
+                val entityType = converter.entityType
+                val dbType     = converter.dbType
+
+                val converterInstance = CodeBlock.of("%T()", converter.converterClass)
+
+                val readLambda = when {
+                    entityType.isNullable && !dbType.isNullable ->
+                        CodeBlock.of("{ %L.convertToEntityAttribute(it!!) }", converterInstance)
+                    else ->
+                        CodeBlock.of("{ %L.convertToEntityAttribute(it) }", converterInstance)
                 }
-                type
+
+                val writeLambda = if (columnType.notNull == entityType.notNull) {
+                    if(columnType.isNullable && ! type.isNullable) {
+                        CodeBlock.of("it!!")
+                    } else {
+                        CodeBlock.of("it")
+                    }
+                } else {
+                    CodeBlock.of("it as %T", entityType)
+                }.let { writeValue ->
+                    CodeBlock.of("{ %L.convertToDatabaseColumn(%L) }", converterInstance, writeValue)
+                }
+
+                initializer.add(CodeBlock.of(".transform(%L, %L)", readLambda, writeLambda))
+
+                columnType
+
             } else {
-                val typeFun = exposedTypeFun(columnName)
-                initializer.add(typeFun)
+                initializer.add(exposedTypeFun(columnName))
                 // Only add autoIncrement() for numeric types and UUID, not for String or other types
                 // Check if type is one of the auto-incrementable types: Int, Long, UInt, ULong, UUID
-                val nonNullType = type.copy(nullable = false)
-                val isAutoIncrementableType = when ((nonNullType as? ClassName)?.canonicalName) {
+                val isAutoIncrementableType = when ((type.notNull as? ClassName)?.canonicalName) {
                     "kotlin.Int", "kotlin.Long", "kotlin.UInt", "kotlin.ULong", "java.util.UUID" -> true
                     else -> false
                 }
@@ -593,7 +604,6 @@ class Generator(
     }
 
     private fun ColumnModel.exposedTypeFun(colName: String, overrideType: TypeName? = null): CodeBlock {
-        val kotlinDateTimePackage = "org.jetbrains.exposed.v1.datetime"
         fun makeBuiltinCode(name: String): CodeBlock {
             return CodeBlock.of("%N(%S)", MemberName(Table::class.asClassName(), name), colName)
         }
@@ -633,12 +643,13 @@ class Generator(
             return CodeBlock.of(
                 "%M<%T>(%S, %M)",
                 MemberName("org.jetbrains.exposed.v1.json", typeAttr.exposedFunction, isExtension = true),
-                propType.copy(nullable = false),
+                propType.notNull,
                 colName,
                 jsonFormatAccessors[typeAttr.formatName] ?: throw ProcessorException("Could not find json format with name ${typeAttr.formatName}. Please define it with @JsonFormat.", declaration)
             )
         }
-        val nonNullType = (overrideType ?: type).copy(nullable = false)
+
+        val nonNullType = (overrideType ?: type).notNull
 
         val colTypeAttrs = attrs.filterIsInstance<FieldAttrs.ColType>()
 

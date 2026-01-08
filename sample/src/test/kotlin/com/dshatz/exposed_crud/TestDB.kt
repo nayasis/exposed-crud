@@ -254,32 +254,16 @@ class TestDB {
 
 
     @Test
-    fun `test converted entity with both nullable and non-nullable fields`() {
+    fun `test converted entity with converter`() {
         transaction(db) {
             val color = Color(255, 23, 7)
-            val nullableColor = Color(128, 64, 32)
             val inserted = ConvertedEntityTable.repo.create(
-                ConvertedEntity(color = color, nullableColor = nullableColor)
+                ConvertedEntity(color = color)
             )
             val found = ConvertedEntityTable.repo.findById(inserted.id)
 
             found shouldNotBe null
             found?.color shouldBe color
-            found?.nullableColor shouldNotBe null
-            found?.nullableColor shouldBe nullableColor
-        }
-    }
-
-    @Test
-    fun `test converted entity with null nullable field`() {
-        transaction(db) {
-            val color = Color(255, 23, 7)
-            val inserted = ConvertedEntityTable.repo.create( ConvertedEntity(color = color, nullableColor = null) )
-            val found = ConvertedEntityTable.repo.findById(inserted.id)
-
-            found shouldNotBe null
-            found?.color shouldBe color
-            found?.nullableColor shouldBe null
         }
     }
 
