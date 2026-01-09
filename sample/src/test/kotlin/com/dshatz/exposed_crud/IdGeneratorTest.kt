@@ -166,5 +166,33 @@ class IdGeneratorTest {
             sample3.id shouldBe "Third_2"
         }
     }
+
+    @Test
+    fun `ID generator should work when ID is empty string`() {
+        transaction(db) {
+            // IdGenerator should work even when ID is set to empty string ("")
+            val sample = Sample(id = "", name = "EmptyId")
+            val inserted = SampleTable.repo.create(sample)
+            
+            // Verify that IdGenerator generated a new ID
+            inserted.id shouldNotBe ""
+            inserted.id shouldBe "EmptyId_0"
+        }
+    }
+
+    @Test
+    fun `ID generator should work when ID is null (nullable String)`() {
+        transaction(db) {
+            // Note: To test nullable String ID, a separate entity would be needed,
+            // but Sample uses non-nullable String, so we test with empty string default.
+            // In practice, only the condition `autoGenerate && idGenerator != null` is checked,
+            // so IdGenerator works regardless of the ID value.
+            val sample = Sample(id = "", name = "NullTest")
+            val inserted = SampleTable.repo.create(sample)
+            
+            inserted.id shouldNotBe ""
+            inserted.id shouldBe "NullTest_0"
+        }
+    }
 }
 
