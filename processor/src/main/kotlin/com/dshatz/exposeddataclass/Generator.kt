@@ -553,7 +553,7 @@ class Generator(
                 }
 
                 val writeLambda = if (columnType.notNull == entityType.notNull) {
-                    if(columnType.isNullable && ! type.isNullable) {
+                    if(columnType.isNullable && ! entityType.isNullable) {
                         CodeBlock.of("it!!")
                     } else {
                         CodeBlock.of("it")
