@@ -50,7 +50,7 @@ data class ULongIdEntity(
 @Entity
 data class UUIDEntity(
     @Id(autoGenerate = true)
-    var id: UUID = UUID.randomUUID(),
+    var id: UUID = Id.UUID_EMPTY,
     var name: String
 )
 

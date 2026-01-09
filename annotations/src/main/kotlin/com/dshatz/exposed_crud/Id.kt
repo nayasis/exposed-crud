@@ -1,6 +1,7 @@
 package com.dshatz.exposed_crud
 
 import kotlin.reflect.KClass
+import java.util.UUID
 
 /**
  * Marks the property as an optionally auto-incrementing primary key.
@@ -14,4 +15,12 @@ import kotlin.reflect.KClass
 annotation class Id(
     val autoGenerate: Boolean = false,
     val generator: KClass<out IdGenerator<*>> = Nothing::class
-)
+) {
+    companion object {
+        /**
+         * Empty UUID constant (00000000-0000-0000-0000-000000000000).
+         * Used to check if a UUID is empty/not set.
+         */
+        val UUID_EMPTY: UUID = UUID(0L, 0L)
+    }
+}

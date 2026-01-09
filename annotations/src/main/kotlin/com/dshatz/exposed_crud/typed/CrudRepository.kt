@@ -20,10 +20,12 @@ import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.mapLazy
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
+import com.dshatz.exposed_crud.Id
 import com.dshatz.exposed_crud.IdGenerator
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.memberProperties
+import java.util.UUID
 
 data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<ColumnSet> = emptyList()) where T: IdTable<ID>, T: IEntityTable<E, ID> {
 
@@ -146,6 +148,33 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
             }
         }
         return data
+    }
+
+    /**
+     * Save an entity. If the ID is empty, creates a new entity. Otherwise, updates the existing entity.
+     * @param data Entity to save
+     * @return saved entity
+     */
+    fun save(data: E): E {
+        val id = table.makePK(data).value
+        return if (isIdEmpty(id)) {
+            create(data)
+        } else {
+            update(data)
+        }
+    }
+
+    private fun isIdEmpty(id: ID): Boolean {
+        return when (id) {
+            is Int    -> id <= 0
+            is Long   -> id <= 0L
+            is UInt   -> id <= 0u
+            is ULong  -> id <= 0uL
+            is Number -> id.toLong() <= 0L
+            is String -> id.isEmpty()
+            is UUID   -> id == Id.UUID_EMPTY
+            else      -> false
+        }
     }
 
     /**
