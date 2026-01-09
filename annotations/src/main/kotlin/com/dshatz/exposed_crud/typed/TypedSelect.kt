@@ -13,6 +13,10 @@ data class TypedSelect<T, E, ID: Any>(val table: T, private val query: Query): I
 
     fun limit(limit: Int) = copy(query = query.limit(limit))
 
+    fun orderBy(column: Column<*>, order: SortOrder = SortOrder.ASC) = copy(query = query.orderBy(column, order))
+
+    fun orderBy(vararg order: Pair<Column<*>, SortOrder>) = copy(query = query.orderBy(*order))
+
     fun withDistinctOn(vararg columns: Column<*>) = copy(query = query.withDistinctOn(columns = columns))
     fun withDistinctOn(vararg columns: Pair<Column<*>, SortOrder>) = copy(query = query.withDistinctOn(columns = columns))
     fun withDistinctOn(value: Boolean = true) = copy(query = query.withDistinct(value))
