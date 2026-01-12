@@ -1,5 +1,7 @@
 package com.dshatz.exposed_crud.override.name
 
+import com.dshatz.exposed_crud.Entity
+import com.dshatz.exposed_crud.Id
 import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -16,13 +18,23 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.Test
 import kotlin.test.BeforeTest
 
+/**
+ * Custom entity for verifying non-default id column names (pii).
+ */
+@Entity
+data class PiiIdEntity(
+    @Id(autoGenerate = true)
+    var pii: Int = -1,
+    var name: String
+)
+
 class OverrideNameTest {
 
     private lateinit var db: Database
 
     @BeforeTest
     fun init() {
-        db = TestHelper.prepareDatabase(listOf(Users, CustomIdTable))
+        db = TestHelper.prepareDatabase(listOf(Users, CustomIdTable, PiiIdEntityTable))
     }
 
     @Test
@@ -73,6 +85,99 @@ class OverrideNameTest {
             val foundById = CustomIdTable.selectAll().where { CustomIdTable.id eq EntityID(200, CustomIdTable) }.firstOrNull()
             foundById shouldNotBe null
             foundById?.let { it[CustomIdTable.name] } shouldBe "Another User"
+        }
+    }
+
+    @Test
+    fun `Entity with pii as ID should work correctly`() {
+        transaction(db) {
+            // Create entity with pii as ID
+            val entity = PiiIdEntity(pii = -1, name = "Test User")
+            val created = PiiIdEntityTable.repo.create(entity)
+
+            // Verify pii was auto-generated
+            created.pii shouldNotBe -1
+            created.pii shouldBe 1
+            created.name shouldBe "Test User"
+
+            // Find by pii
+            val found = PiiIdEntityTable.repo.findById(created.pii)
+            found shouldNotBe null
+            found?.pii shouldBe created.pii
+            found?.name shouldBe "Test User"
+        }
+    }
+
+    @Test
+    fun `Entity with pii as ID should support update`() {
+        transaction(db) {
+            // Create entity
+            val entity = PiiIdEntity(pii = -1, name = "Original Name")
+            val created = PiiIdEntityTable.repo.create(entity)
+
+            // Update entity
+            val updated = PiiIdEntityTable.repo.update(created.copy(name = "Updated Name"))
+
+            updated.pii shouldBe created.pii
+            updated.name shouldBe "Updated Name"
+
+            // Verify update in database
+            val found = PiiIdEntityTable.repo.findById(created.pii)
+            found shouldNotBe null
+            found?.name shouldBe "Updated Name"
+        }
+    }
+
+    @Test
+    fun `Entity with pii as ID should support save`() {
+        transaction(db) {
+            // Save with empty ID should create
+            val entity1 = PiiIdEntity(pii = -1, name = "New Entity")
+            val saved1 = PiiIdEntityTable.repo.save(entity1)
+
+            saved1.pii shouldNotBe -1
+            saved1.pii shouldBe 1
+            saved1.name shouldBe "New Entity"
+
+            // Save with existing ID should update
+            val saved2 = PiiIdEntityTable.repo.save(saved1.copy(name = "Updated Entity"))
+            saved2.pii shouldBe saved1.pii
+            saved2.name shouldBe "Updated Entity"
+
+            // Verify update
+            val found = PiiIdEntityTable.repo.findById(saved1.pii)
+            found?.name shouldBe "Updated Entity"
+        }
+    }
+
+    @Test
+    fun `Entity with pii as ID should support selectAll`() {
+        transaction(db) {
+            // Create multiple entities
+            PiiIdEntityTable.repo.create(PiiIdEntity(pii = -1, name = "First"))
+            PiiIdEntityTable.repo.create(PiiIdEntity(pii = -1, name = "Second"))
+            PiiIdEntityTable.repo.create(PiiIdEntity(pii = -1, name = "Third"))
+
+            // Select all
+            val all = PiiIdEntityTable.repo.selectAll()
+            all.size shouldBe 3
+            all.map { it.name } shouldBe listOf("First", "Second", "Third")
+            all.map { it.pii }.distinct().size shouldBe 3 // All pii values should be unique
+        }
+    }
+
+    @Test
+    fun `Entity with pii as ID should support delete`() {
+        transaction(db) {
+            // Create entity
+            val entity = PiiIdEntityTable.repo.create(PiiIdEntity(pii = -1, name = "To Delete"))
+
+            // Delete entity
+            PiiIdEntityTable.repo.deleteById(entity.pii)
+
+            // Verify deletion
+            val found = PiiIdEntityTable.repo.findById(entity.pii)
+            found shouldBe null
         }
     }
 

@@ -37,9 +37,9 @@ data class EntityModel(
                 CompositeIdTable::class.asClassName() to CodeBlock.of("%S", tableName)
             }
             is PrimaryKey.Simple -> {
-                if (primaryKey.prop.type in tableTypes) {
-                    tableTypes[primaryKey.prop.type]!! to CodeBlock.of("%S, %S", tableName, primaryKey.prop.nameInDsl)
-                } else IdTable::class.asTypeName().parameterizedBy(primaryKey.prop.type) to CodeBlock.of("%S", tableName)
+                // Always use IdTable for consistency, regardless of id column name
+                // CrudRepository handles auto-increment via autoGenerate property
+                IdTable::class.asTypeName().parameterizedBy(primaryKey.prop.type) to CodeBlock.of("%S", tableName)
             }
         }
     }
@@ -66,10 +66,6 @@ data class EntityModel(
     companion object {
         private val simpleIdTypes = sequenceOf(Int::class, Long::class, UInt::class, ULong::class, UUID::class)
             .map { it.asTypeName() }.toSet()
-        private val tableTypes = simpleIdTypes.associateWith {
-            val suffix = if (it.simpleName == "UUID") "Table" else "IdTable"
-            ClassName("org.jetbrains.exposed.v1.core.dao.id", it.simpleName + suffix)
-        }
 
         private val entityTypes = simpleIdTypes.associateWith {
             ClassName("org.jetbrains.exposed.v1.core.dao", it.simpleName + "Entity")

@@ -82,19 +82,42 @@ class Generator(
 
             val primaryKeyInit = when (tableModel.primaryKey) {
                 is PrimaryKey.Composite -> CodeBlock.of("PrimaryKey(%L)", tableModel.primaryKey.props.joinToString(", ") { it.nameInDsl })
-                is PrimaryKey.Simple -> CodeBlock.of("PrimaryKey(%L)", tableModel.primaryKey.prop.nameInDsl)
+                is PrimaryKey.Simple -> {
+                    // Always use "id" for primaryKey since we generate override val id
+                    CodeBlock.of("PrimaryKey(id)")
+                }
             }
 
             val dontGeneratePK = tableModel.shouldExcludePKFields()
-
+            val isSimpleId = tableModel.primaryKey is PrimaryKey.Simple
+            val idColumnName = if (isSimpleId) tableModel.primaryKey.prop.nameInDsl else null
+            val idColumnNameIsNotId = isSimpleId && idColumnName != "id"
+            
+            // Since we always use IdTable now, we need to generate id column and primaryKey explicitly
             val primaryKey = PropertySpec.builder("primaryKey", Table.PrimaryKey::class, KModifier.OVERRIDE)
-                .initializer(primaryKeyInit).takeUnless { dontGeneratePK }
+                .initializer(primaryKeyInit)
 
-            tableModel.columns.filterNot { dontGeneratePK && it in tableModel.primaryKey }.forEach {
+            // Generate all columns including id column
+            // If id column name is "id", generateProp will add override modifier
+            // If id column name is not "id" (e.g., "code", "pii"), we generate both the original column and override val id
+            tableModel.columns.forEach {
                 tableDef.addProperty(it.generateProp(tableModel))
             }
+            
+            // If id column name is not "id", add override val id = actualIdColumn
+            // This maps IdTable's abstract id property to our custom-named id column
+            if (isSimpleId && idColumnNameIsNotId) {
+                val idProp = tableModel.primaryKey.prop
+                val idColType = finalColumnTypes[tableModel to idProp] 
+                    ?: tableModel.entityIdType()
+                // Map override val id to the actual id column (by its original name)
+                val overrideId = PropertySpec.builder("id", Column::class.asTypeName().parameterizedBy(idColType), KModifier.OVERRIDE)
+                    .initializer(CodeBlock.of("%N", idProp.nameInDsl))
+                    .build()
+                tableDef.addProperty(overrideId)
+            }
 
-            primaryKey?.build()?.let(tableDef::addProperty)
+            primaryKey.build().let(tableDef::addProperty)
 
             // idGenerator
             PropertySpec.builder("idGenerator", IdGenerator::class.asKClassTypeName().nullable).apply {
@@ -570,14 +593,19 @@ class Generator(
 
             } else {
                 initializer.add(exposedTypeFun(columnName))
-                // Only add autoIncrement() for numeric types and UUID, not for String or other types
-                // Check if type is one of the auto-incrementable types: Int, Long, UInt, ULong, UUID
-                val isAutoIncrementableType = when ((type.notNull as? ClassName)?.canonicalName) {
-                    "kotlin.Int", "kotlin.Long", "kotlin.UInt", "kotlin.ULong", "java.util.UUID" -> true
+                // Auto-increment handling: use autoGenerate() for UUID, autoIncrement() for numeric types
+                val canonicalName = (type.notNull as? ClassName)?.canonicalName
+                val isUuidType = canonicalName == "java.util.UUID" || canonicalName == "kotlin.uuid.Uuid"
+                val isAutoIncrementableType = when (canonicalName) {
+                    "kotlin.Int", "kotlin.Long", "kotlin.UInt", "kotlin.ULong" -> true
                     else -> false
                 }
-                if (autoIncrementing && isAutoIncrementableType) {
-                    initializer.add(".autoIncrement()")
+                if (autoIncrementing) {
+                    if (isUuidType) {
+                        initializer.add(".autoGenerate()")
+                    } else if (isAutoIncrementableType) {
+                        initializer.add(".autoIncrement()")
+                    }
                 }
                 default?.let { initializer.add(".default(%L)", it) }
                 if (type.isNullable) initializer.add(".nullable()")
@@ -598,7 +626,10 @@ class Generator(
         val propType = Column::class.asTypeName().parameterizedBy(colType)
 
         val spec = PropertySpec.builder(nameInDsl, propType)
-        if (isSimpleId) spec.addModifiers(KModifier.OVERRIDE)
+        // Only add override if it's a simple ID column AND the column name is "id"
+        // If id column name is not "id" (e.g., "pii"), we use IdTable directly which doesn't have that property
+        val isSimpleIdWithIdName = isSimpleId && nameInDsl == "id"
+        if (isSimpleIdWithIdName) spec.addModifiers(KModifier.OVERRIDE)
         
         return spec.initializer(initializer.build()).build()
     }
@@ -661,7 +692,7 @@ class Generator(
 
             U_BYTE -> makeBuiltinCode("ubyte")
             U_SHORT -> makeBuiltinCode("ushort")
-            U_INT -> makeBuiltinCode("uint")
+            U_INT -> makeBuiltinCode("uinteger")
             U_LONG -> makeBuiltinCode("ulong")
 
             CHAR -> makeBuiltinCode("char")

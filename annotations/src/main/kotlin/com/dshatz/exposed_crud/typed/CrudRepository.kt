@@ -5,11 +5,6 @@ import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
-import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
-import org.jetbrains.exposed.v1.core.dao.id.LongIdTable
-import org.jetbrains.exposed.v1.core.dao.id.UIntIdTable
-import org.jetbrains.exposed.v1.core.dao.id.ULongIdTable
-import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.statements.UpdateStatement
 import org.jetbrains.exposed.v1.jdbc.Query
@@ -28,13 +23,6 @@ import kotlin.reflect.full.memberProperties
 import java.util.UUID
 
 data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<ColumnSet> = emptyList()) where T: IdTable<ID>, T: IEntityTable<E, ID> {
-
-    private val isAutoIncrementingTable =
-        table is IntIdTable   ||
-        table is UIntIdTable  ||
-        table is LongIdTable  ||
-        table is ULongIdTable ||
-        table is UUIDTable
 
     private val autoGenerate = runCatching {
         table::class.memberProperties.find { it.name == "autoGenerate" }?.call(table) as Boolean
@@ -96,12 +84,23 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
                 }
                 data
             }
-            autoGenerate && isAutoIncrementingTable -> {
-                val id = table.insertAndGetId {
-                    table.writeExceptAutoIncrementing(it, data)
-                }.value
-                table.setId(data, id)
-                data
+            autoGenerate && idGenerator == null -> {
+                // For IdTable with autoGenerate=true and no custom generator, try insertAndGetId
+                // This handles custom IdTable<Int>, IdTable<Long>, etc. with auto-increment columns
+                runCatching {
+                    val id = table.insertAndGetId {
+                        table.writeExceptAutoIncrementing(it, data)
+                    }.value
+                    table.setId(data, id)
+                    data
+                }.getOrElse {
+                    // Fallback: insert and retrieve by PK
+                    table.insert {
+                        table.writeExceptAutoIncrementing(it, data)
+                    }
+                    val pk = table.makePK(data).value
+                    findById(pk) ?: error("failed to retrieve inserted entity with PK: $pk")
+                }
             }
             else -> {
                 table.insert {

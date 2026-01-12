@@ -311,7 +311,7 @@ class KspProcessor(
             declaration = declaration,
             nameInEntity = name,
             columnName = columnName,
-            nameInDsl = name.takeUnless { idProperties.size == 1 && idProperties.first().first.getPropName() == name } ?: "id",
+            nameInDsl = name, // Always use the original property name, even for id columns
             type = declaration.type.toTypeName(),
             autoIncrementing = autoIncrement,
             default = default,
