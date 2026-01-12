@@ -13,10 +13,10 @@ import com.dshatz.exposed_crud.models.MovieTable
 import com.dshatz.exposed_crud.models.createWithRelated
 import com.dshatz.exposed_crud.models.findById
 import com.dshatz.exposed_crud.models.repo
+import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -28,23 +28,17 @@ class TestDbBackReferences {
     @BeforeTest
     fun init() {
         // Use H2 in-memory database (to avoid timestamp precision issues)
-        db = Database.connect("jdbc:h2:mem:test_db_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY", "org.h2.Driver")
-        transaction(db) {
-            // For in-memory H2 we can just create tables on each test run without dropping.
-            // To satisfy FK constraints create parent tables first and child tables afterwards.
+        // To satisfy FK constraints create parent tables first and child tables afterwards.
+        db = TestHelper.prepareDatabase(
             listOf(
                 DirectorTable,             // Parent
                 LanguageTable,             // Parent
                 CategoryTable,             // Parent
                 MovieTable,                // Director, Category FK
                 CategoryTranslationsTable, // Category, Language FK
-            ).forEach {
-                SchemaUtils.create(it)
-            }
-        }
-        transaction(db) {
-            println(SchemaUtils.listTables())
-        }
+            ),
+            url = "jdbc:h2:mem:test_db_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
+        )
     }
 
     @Test

@@ -1,11 +1,10 @@
 package com.dshatz.exposed_crud
 
 import com.dshatz.exposed_crud.models.*
+import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import org.jetbrains.exposed.v1.core.StdOutSqlLogger
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.util.*
 import kotlin.test.BeforeTest
@@ -23,25 +22,16 @@ class CreateReturningTest {
 
     @BeforeTest
     fun init() {
-        db = Database.connect(
-            "jdbc:h2:mem:test_create_returning_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=MYSQL",
-            driver = "org.h2.Driver"
-        )
-        transaction(db) {
-            addLogger(StdOutSqlLogger)
-            
-            // Drop and create all test tables
+        db = TestHelper.prepareDatabase(
             listOf(
                 IntIdEntityTable,
                 LongIdEntityTable,
                 UIntIdEntityTable,
                 ULongIdEntityTable,
                 UUIDEntityTable
-            ).forEach {
-                SchemaUtils.drop(it)
-                SchemaUtils.create(it)
-            }
-        }
+            ),
+            url = "jdbc:h2:mem:test_create_returning_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=MYSQL"
+        )
     }
 
     @Test

@@ -4,11 +4,10 @@ import com.dshatz.exposed_crud.models.Sample
 import com.dshatz.exposed_crud.models.SampleIdGenerator
 import com.dshatz.exposed_crud.models.SampleTable
 import com.dshatz.exposed_crud.models.repo
+import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import org.jetbrains.exposed.v1.core.StdOutSqlLogger
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.util.*
 import kotlin.test.AfterTest
@@ -24,14 +23,10 @@ class IdGeneratorTest {
         // Reset sequence for each test
         SampleIdGenerator.seq = 0
         
-        db = Database.connect(
-            "jdbc:h2:mem:id_generator_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY",
-            "org.h2.Driver"
+        db = TestHelper.prepareDatabase(
+            listOf(SampleTable),
+            url = "jdbc:h2:mem:id_generator_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
-        transaction(db) {
-            addLogger(StdOutSqlLogger)
-            SchemaUtils.create(SampleTable)
-        }
     }
 
     @AfterTest

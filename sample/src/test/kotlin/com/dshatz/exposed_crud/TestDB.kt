@@ -18,12 +18,12 @@ import com.dshatz.exposed_crud.models.createWithRelated
 import com.dshatz.exposed_crud.models.deleteById
 import com.dshatz.exposed_crud.models.findById
 import com.dshatz.exposed_crud.models.repo
+import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.test.BeforeTest
@@ -35,8 +35,7 @@ class TestDB {
 
     @BeforeTest
     fun init() {
-        db = Database.connect("jdbc:sqlite:memory:test_db_${java.util.UUID.randomUUID()}?foreign_keys=on", "org.sqlite.JDBC")
-        transaction(db) {
+        db = TestHelper.prepareDatabase(
             listOf(
                 DirectorTable,
                 MovieTable,
@@ -44,14 +43,9 @@ class TestDB {
                 CategoryTable,
                 CategoryTranslationsTable,
                 ConvertedEntityTable,
-            ).forEach {
-                SchemaUtils.drop(it)
-                SchemaUtils.create(it)
-            }
-        }
-        transaction(db) {
-            println(SchemaUtils.listTables())
-        }
+            ),
+            url = "jdbc:sqlite:memory:test_db_${java.util.UUID.randomUUID()}?foreign_keys=on"
+        )
     }
 
     @Test

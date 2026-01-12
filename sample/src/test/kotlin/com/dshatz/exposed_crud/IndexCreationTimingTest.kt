@@ -3,6 +3,7 @@ package com.dshatz.exposed_crud
 import com.dshatz.exposed_crud.models.Game
 import com.dshatz.exposed_crud.models.GameTable
 import com.dshatz.exposed_crud.models.repo
+import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.collections.shouldContain
 import org.jetbrains.exposed.v1.core.StdOutSqlLogger
@@ -23,6 +24,8 @@ class IndexCreationTimingTest {
 
     @BeforeTest
     fun init() {
+        // Note: This test intentionally doesn't create tables in init() to test timing
+        // So we just connect to the database without creating tables
         db = Database.connect(
             "jdbc:h2:mem:index_timing_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY",
             "org.h2.Driver"

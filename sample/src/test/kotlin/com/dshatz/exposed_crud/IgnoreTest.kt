@@ -3,9 +3,9 @@ package com.dshatz.exposed_crud
 import com.dshatz.exposed_crud.models.IgnoreEntity
 import com.dshatz.exposed_crud.models.IgnoreEntityTable
 import com.dshatz.exposed_crud.models.repo
+import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import org.jetbrains.exposed.v1.core.StdOutSqlLogger
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -19,14 +19,10 @@ class IgnoreTest {
 
     @BeforeTest
     fun init() {
-        db = Database.connect(
-            "jdbc:h2:mem:ignore_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY",
-            "org.h2.Driver"
+        db = TestHelper.prepareDatabase(
+            listOf(IgnoreEntityTable),
+            url = "jdbc:h2:mem:ignore_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
-        transaction(db) {
-            addLogger(StdOutSqlLogger)
-            SchemaUtils.create(IgnoreEntityTable)
-        }
     }
 
     @Test

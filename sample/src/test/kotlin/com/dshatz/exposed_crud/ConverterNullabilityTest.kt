@@ -4,10 +4,10 @@ import com.dshatz.exposed_crud.models.ConverterNullabilityTestEntity
 import com.dshatz.exposed_crud.models.ConverterNullabilityTestEntityTable
 import com.dshatz.exposed_crud.models.TestValue
 import com.dshatz.exposed_crud.models.repo
+import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -25,13 +25,10 @@ class ConverterNullabilityTest {
 
     @BeforeTest
     fun init() {
-        db = Database.connect(
-            "jdbc:h2:mem:converter_nullability_test_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY",
+        db = TestHelper.prepareDatabase(
+            listOf(ConverterNullabilityTestEntityTable),
+            url = "jdbc:h2:mem:converter_nullability_test_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
-        transaction(db) {
-            SchemaUtils.drop(ConverterNullabilityTestEntityTable)
-            SchemaUtils.create(ConverterNullabilityTestEntityTable)
-        }
     }
 
     @Test

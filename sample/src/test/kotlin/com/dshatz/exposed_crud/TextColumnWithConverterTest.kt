@@ -4,10 +4,10 @@ import com.dshatz.exposed_crud.models.TestData
 import com.dshatz.exposed_crud.models.TextColumnWithConverterEntity
 import com.dshatz.exposed_crud.models.TextColumnWithConverterEntityTable
 import com.dshatz.exposed_crud.models.repo
+import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -18,13 +18,10 @@ class TextColumnWithConverterTest {
 
     @BeforeTest
     fun init() {
-        db = Database.connect(
-            "jdbc:h2:mem:text_column_converter_test_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY",
+        db = TestHelper.prepareDatabase(
+            listOf(TextColumnWithConverterEntityTable),
+            url = "jdbc:h2:mem:text_column_converter_test_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
-        transaction(db) {
-            SchemaUtils.drop(TextColumnWithConverterEntityTable)
-            SchemaUtils.create(TextColumnWithConverterEntityTable)
-        }
     }
 
     @Test

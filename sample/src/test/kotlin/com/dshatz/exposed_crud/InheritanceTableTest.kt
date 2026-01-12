@@ -5,8 +5,8 @@ import com.dshatz.exposed_crud.models.EmployeeIndiaTable
 import com.dshatz.exposed_crud.models.EmployeeJapan
 import com.dshatz.exposed_crud.models.EmployeeJapanTable
 import com.dshatz.exposed_crud.models.repo
+import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
-import org.jetbrains.exposed.v1.core.StdOutSqlLogger
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -20,20 +20,14 @@ class InheritanceTableTest {
 
     @BeforeTest
     fun init() {
-        db = Database.connect(
-            "jdbc:h2:mem:inheritance_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY",
-            "org.h2.Driver"
-        )
-        transaction(db) {
-            addLogger(StdOutSqlLogger)
-            // Create only EmployeeJapan and EmployeeIndia tables (DefaultEntity and AbstractEmployee are not tables)
+        // Create only EmployeeJapan and EmployeeIndia tables (DefaultEntity and AbstractEmployee are not tables)
+        db = TestHelper.prepareDatabase(
             listOf(
                 EmployeeJapanTable,
                 EmployeeIndiaTable,
-            ).forEach {
-                SchemaUtils.create(it)
-            }
-        }
+            ),
+            url = "jdbc:h2:mem:inheritance_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
+        )
         
         transaction(db) {
             println("Created tables:")

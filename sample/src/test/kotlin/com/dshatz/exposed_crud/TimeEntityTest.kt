@@ -17,11 +17,10 @@ import java.time.LocalTime as JavaLocalTime
 import kotlin.math.abs
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import org.jetbrains.exposed.v1.core.StdOutSqlLogger
+import com.dshatz.exposed_crud.helper.TestHelper
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.time.Clock
 
@@ -31,17 +30,10 @@ class TimeEntityTest {
 
     @BeforeTest
     fun init() {
-        db = Database.connect(
-            "jdbc:sqlite:memory:time_db_${java.util.UUID.randomUUID()}?foreign_keys=on",
-            "org.sqlite.JDBC"
+        db = TestHelper.prepareDatabase(
+            listOf(KotlinTimeEntityTable, JavaTimeEntityTable),
+            url = "jdbc:sqlite:memory:time_db_${java.util.UUID.randomUUID()}?foreign_keys=on"
         )
-        transaction(db) {
-            addLogger(StdOutSqlLogger)
-            listOf(KotlinTimeEntityTable, JavaTimeEntityTable).forEach {
-                SchemaUtils.drop(it)
-                SchemaUtils.create(it)
-            }
-        }
     }
 
     @Test
