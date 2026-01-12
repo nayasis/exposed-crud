@@ -1,0 +1,18 @@
+# Cursor Rules
+
+This project uses CLAUDE.md as the primary source of coding guidelines and conventions.
+
+**IMPORTANT: Always refer to CLAUDE.md for:**
+
+- Code conventions and documentation standards
+- Commit message guidelines
+- Project architecture and development workflow
+- Testing procedures
+
+Before making any changes, review the relevant sections in CLAUDE.md to ensure compliance with project standards.
+
+Key rules from CLAUDE.md:
+
+- All code comments must be written in English
+- All commit messages must be written in English
+- Do NOT include AI attribution in commit messages
