@@ -184,6 +184,7 @@ class Generator(
                         addFunction(generateFindById(tableModel))
                     }
                 }
+                .addFunction(generateExistsById(tableModel))
                 .addFunction(generateDeleteById(tableModel))
                 .apply {
                     if (tableModel.columns.any { it.foreignKey != null }) {
@@ -749,6 +750,23 @@ class Generator(
                 ParameterSpec(it.nameInEntity, it.type)
             })
             .addCode("return findOne({%T.id.eq(EntityID(%L, %T))})", model.tableClass, idCode, model.tableClass)
+            .build()
+    }
+
+    private fun generateExistsById(model: EntityModel): FunSpec {
+        val idCode = makeIdCode(model)
+        return FunSpec.builder("existsById")
+            .receiver(model.crudRepositoryType())
+            .returns(BOOLEAN)
+            .addParameters(model.primaryKey.map {
+                ParameterSpec(it.nameInEntity, it.type)
+            })
+            .addCode(
+                "return select().where { %T.id.eq(EntityID(%L, %T)) }.limit(1).any()",
+                model.tableClass,
+                idCode,
+                model.tableClass
+            )
             .build()
     }
 
