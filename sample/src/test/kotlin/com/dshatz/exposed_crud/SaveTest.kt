@@ -311,4 +311,38 @@ class SaveTest {
             notFound shouldBe null
         }
     }
+
+    @Test
+    fun `saveAll should create multiple entities and set ids`() {
+        transaction(db) {
+            val items = mutableListOf(
+                LongIdEntity(id = 0, name = "First"),
+                LongIdEntity(id = 0, name = "Second"),
+                LongIdEntity(id = 0, name = "Third")
+            )
+
+            LongIdEntityTable.repo.saveAll(items)
+
+            items.map { it.id } shouldBe listOf(1L, 2L, 3L)
+            LongIdEntityTable.repo.selectAll().size shouldBe 3
+        }
+    }
+
+    @Test
+    fun `saveAll should update existing and create new entities`() {
+        transaction(db) {
+            val created = LongIdEntityTable.repo.create(LongIdEntity(id = 0, name = "Original"))
+            val updated = created.copy(name = "Updated")
+            val newEntity = LongIdEntity(id = 0, name = "New")
+
+            LongIdEntityTable.repo.saveAll(listOf(updated, newEntity))
+
+            val found = LongIdEntityTable.repo.findById(created.id)
+            found shouldNotBe null
+            found?.name shouldBe "Updated"
+
+            newEntity.id shouldBe 2L
+            LongIdEntityTable.repo.selectAll().size shouldBe 2
+        }
+    }
 }

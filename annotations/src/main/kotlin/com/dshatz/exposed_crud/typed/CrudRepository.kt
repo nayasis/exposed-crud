@@ -163,6 +163,15 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
         }
     }
 
+    /**
+     * save entities.
+     *
+     * @param items entities to save
+     */
+    fun saveAll(items: Collection<E>) {
+        items.forEach { save(it) }
+    }
+
     private fun isIdEmpty(id: ID): Boolean {
         return when (id) {
             is Int    -> id <= 0
