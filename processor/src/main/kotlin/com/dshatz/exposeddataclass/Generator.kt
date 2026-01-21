@@ -286,7 +286,8 @@ class Generator(
             } else {
                 // Auto-detect foreign keys.
                 remotePK.forEach { remoteIDColumn ->
-                    val localName = remoteModel.originalClassName.simpleName.decapitate() + remoteIDColumn.nameInDsl.capitalize()
+                    val localName = remoteModel.originalClassName.simpleName.decapitate() +
+                        remoteIDColumn.nameInDsl.capitalize()
                     if (model.columns.find { it.foreignKey?.related == refInfo.related && it.nameInDsl == localName } == null) {
                         throw ProcessorException("$localName not found in ${model.tableName}. It should be annotated with @ForeignKey(${refInfo.related}::class). If $localName is not correct, specify the correct name in @References", model.declaration)
                     }
@@ -916,5 +917,11 @@ class Generator(
 
     companion object {
         private val and = MemberName("org.jetbrains.exposed.v1.core", "and")
+    }
+}
+
+private fun String.capitalize(): String {
+    return replaceFirstChar { char ->
+        if (char.isLowerCase()) char.titlecase() else char.toString()
     }
 }
