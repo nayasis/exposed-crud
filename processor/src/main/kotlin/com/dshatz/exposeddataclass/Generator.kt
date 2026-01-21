@@ -179,7 +179,11 @@ class Generator(
                 .apply {
                     typedQueriesGenerator?.generateRepoAccessors(tableModel)?.forEach { addProperty(it) }
                 }
-                .addFunction(generateFindById(tableModel))
+                .apply {
+                    if (tableModel.primaryKey is PrimaryKey.Composite) {
+                        addFunction(generateFindById(tableModel))
+                    }
+                }
                 .addFunction(generateDeleteById(tableModel))
                 .apply {
                     if (tableModel.columns.any { it.foreignKey != null }) {
