@@ -235,11 +235,18 @@ The generator creates appropriate `now()` calls in `write()` methods.
 ### Testing Changes
 
 After modifying the processor, test by:
+
 1. Clean and rebuild sample: `./gradlew :sample:clean :sample:build`
 2. Inspect generated code in `sample/build/generated/ksp/main/kotlin/`
 3. Run tests: `./gradlew :sample:test`
 
 The sample module tests all features through actual compilation and execution.
+
+### Test Coverage for Important Features
+
+When you add an important feature, if there is no related test case, create one.
+After adding such a feature and its tests, you must run the full test suite
+(`./gradlew :sample:check`) to ensure end-to-end validation.
 
 ### Adding New Annotations
 
@@ -252,6 +259,7 @@ The sample module tests all features through actual compilation and execution.
 ### Code Generation with KotlinPoet
 
 The processor uses KotlinPoet extensively. Key patterns:
+
 - `TypeSpec.objectBuilder()` for table objects
 - `FunSpec.builder()` for methods
 - `PropertySpec.builder()` for columns
