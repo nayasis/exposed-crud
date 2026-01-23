@@ -32,7 +32,10 @@ class SaveTest {
                 LongIdEntityTable,
                 IntIdEntityTable,
                 UUIDEntityTable,
-                SampleTable
+                SampleTable,
+                CategoryTable,
+                LanguageTable,
+                CategoryTranslationsTable
             ),
             url = "jdbc:h2:mem:test_save_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=MYSQL"
         )
@@ -222,6 +225,36 @@ class SaveTest {
             val all = LongIdEntityTable.repo.selectAll()
             all.size shouldBe 1
             all.first().name shouldBe "Updated"
+        }
+    }
+
+    @Test
+    fun `save with composite id should create then update on duplicate`() {
+        transaction(db) {
+            val category = CategoryTable.repo.create(Category())
+            val language = LanguageTable.repo.create(Language(code = "ko"))
+
+            val created = CategoryTranslationsTable.repo.save(
+                CategoryTranslations(
+                    categoryId = category.id,
+                    languageCode = language.code,
+                    translation = "Korean"
+                )
+            )
+
+            val updated = CategoryTranslationsTable.repo.save(
+                created.copy(translation = "Korean Updated")
+            )
+
+            updated.categoryId shouldBe category.id
+            updated.languageCode shouldBe language.code
+            updated.translation shouldBe "Korean Updated"
+
+            CategoryTranslationsTable.repo.selectAll().size shouldBe 1
+
+            val found = CategoryTranslationsTable.repo.findById(category.id, language.code)
+            found shouldNotBe null
+            found?.translation shouldBe "Korean Updated"
         }
     }
 

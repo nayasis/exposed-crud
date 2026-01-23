@@ -3,8 +3,10 @@ package com.dshatz.exposed_crud.typed
 import org.jetbrains.exposed.v1.core.ColumnSet
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.statements.UpdateStatement
 import org.jetbrains.exposed.v1.jdbc.Query
@@ -21,6 +23,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.memberProperties
 import java.util.UUID
+import java.sql.SQLException
 
 data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<ColumnSet> = emptyList()) where T: IdTable<ID>, T: IEntityTable<E, ID> {
 
@@ -156,7 +159,15 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
      */
     fun save(data: E): E {
         val id = table.makePK(data).value
-        return if (isIdEmpty(id)) {
+        return if (id is CompositeID) {
+            runCatching { create(data) }.getOrElse { error ->
+                if (isDuplicateKeyException(error)) {
+                    update(data)
+                } else {
+                    throw error
+                }
+            }
+        } else if (isIdEmpty(id)) {
             create(data)
         } else {
             update(data)
@@ -183,6 +194,22 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
             is UUID   -> id == Id.UUID_EMPTY
             else      -> false
         }
+    }
+
+    private fun isDuplicateKeyException(error: Throwable): Boolean {
+        val sqlException = generateSequence(error) { it.cause }
+            .filterIsInstance<SQLException>()
+            .firstOrNull()
+        val sqlState = sqlException?.sqlState
+        if (sqlState == "23505" || sqlState == "23000") {
+            return true
+        }
+        val exposedError = generateSequence(error) { it.cause }
+            .filterIsInstance<ExposedSQLException>()
+            .firstOrNull()
+        return exposedError?.message
+            ?.contains("duplicate", ignoreCase = true)
+            ?: false
     }
 
     /**
