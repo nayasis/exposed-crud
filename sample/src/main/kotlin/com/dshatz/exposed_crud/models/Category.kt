@@ -1,6 +1,7 @@
 package com.dshatz.exposed_crud.models
 
 import com.dshatz.exposed_crud.BackReference
+import com.dshatz.exposed_crud.Column
 import com.dshatz.exposed_crud.Default
 import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.Id
@@ -8,7 +9,9 @@ import com.dshatz.exposed_crud.Id
 @Entity
 data class Category(
     @Id(autoGenerate = true)
+    @Column
     var id: Long = -1,
+    @Column
     @Default("false")
     var adult: Boolean = false,
 

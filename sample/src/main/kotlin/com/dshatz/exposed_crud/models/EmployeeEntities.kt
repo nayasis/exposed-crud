@@ -20,8 +20,11 @@ open class DefaultEntity(
  */
 abstract class AbstractEmployee(
     @Id(autoGenerate = true)
+    @Column
     var id: Long = -1,
+    @Column
     var name: String = "",
+    @Column
     var age: Int = 0,
 ) : DefaultEntity()
 

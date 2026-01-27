@@ -1,5 +1,6 @@
 package com.dshatz.exposed_crud.models
 
+import com.dshatz.exposed_crud.Column
 import com.dshatz.exposed_crud.interfaces.AttributeConverter
 import com.dshatz.exposed_crud.Convert
 import com.dshatz.exposed_crud.Entity
@@ -28,7 +29,10 @@ class ColorConverter : AttributeConverter<Color, String?> {
 
 @Entity
 data class ConvertedEntity(
-    @Id val id: Int = 0,
+    @Id
+    @Column
+    val id: Int = 0,
+    @Column
     @Convert(ColorConverter::class)
     @Varchar(50)
     val color: Color,

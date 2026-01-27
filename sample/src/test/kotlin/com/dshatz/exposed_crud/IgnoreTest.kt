@@ -34,15 +34,15 @@ class IgnoreTest {
             val tables = SchemaUtils.listTables()
             tables.any { it.contains("IGNORE_ENTITIES", ignoreCase = true) } shouldBe true
             
-            // verify non-ignored fields should be present
+            // verify @Column fields should be present
             val columnNames = columns.map { it.name }
-            columnNames.size shouldBe 3 // id, name, active
+            columnNames.size shouldBe 4 // id, name, ignoredField, active
             columnNames.contains("id") shouldBe true
             columnNames.contains("name") shouldBe true
+            columnNames.contains("ignoredField") shouldBe true
             columnNames.contains("active") shouldBe true
             
-            // verify ignored fields are not present
-            columnNames.contains("ignoredField") shouldBe false
+            // verify non-column fields are not present
             columnNames.contains("computedProperty") shouldBe false
             columnNames.contains("anotherIgnored") shouldBe false
         }
@@ -68,7 +68,7 @@ class IgnoreTest {
             found?.id shouldBe inserted.id
             found?.name shouldBe inserted.name
             found?.active shouldBe inserted.active
-            found?.ignoredField shouldBe null
+            found?.ignoredField shouldBe inserted.ignoredField
             found?.anotherIgnored shouldBe 0
 
         }

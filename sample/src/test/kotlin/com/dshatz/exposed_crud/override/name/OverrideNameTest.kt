@@ -1,11 +1,12 @@
 package com.dshatz.exposed_crud.override.name
 
+import com.dshatz.exposed_crud.Column
 import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.Id
 import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Column as ExposedColumn
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
@@ -24,7 +25,9 @@ import kotlin.test.BeforeTest
 @Entity
 data class PiiIdEntity(
     @Id(autoGenerate = true)
+    @Column
     var pii: Int = -1,
+    @Column
     var name: String
 )
 
@@ -193,11 +196,11 @@ object Users : Table() {
 // IdTable with custom id field name pii
 object CustomIdTable : IdTable<Int>("custom_id_table") {
     // pii is defined as a regular property
-    val pii: Column<EntityID<Int>> = integer("pii").entityId()
+    val pii: ExposedColumn<EntityID<Int>> = integer("pii").entityId()
     val name = varchar("name", length = 50)
     
     // Map id property to pii (implements IdTable's abstract property)
-    override val id: Column<EntityID<Int>> = pii
+    override val id: ExposedColumn<EntityID<Int>> = pii
     
     override val primaryKey = PrimaryKey(pii)
 }

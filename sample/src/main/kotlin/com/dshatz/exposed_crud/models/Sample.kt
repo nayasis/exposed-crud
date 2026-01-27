@@ -1,5 +1,6 @@
 package com.dshatz.exposed_crud.models
 
+import com.dshatz.exposed_crud.Column
 import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.Id
 import com.dshatz.exposed_crud.IdGenerator
@@ -24,7 +25,9 @@ class SampleIdGenerator : IdGenerator<Sample> {
 @Entity
 data class Sample(
     @Id(autoGenerate = true, generator = SampleIdGenerator::class)
+    @Column
     var id: String = "",
+    @Column
     val name: String
 )
 

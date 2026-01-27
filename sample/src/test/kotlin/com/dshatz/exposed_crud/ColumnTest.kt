@@ -5,6 +5,7 @@ import com.dshatz.exposed_crud.models.ColumnTestEntityTable
 import com.dshatz.exposed_crud.models.repo
 import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.test.BeforeTest
@@ -29,7 +30,7 @@ class ColumnTest {
             val columnNames = ColumnTestEntityTable.columns.map { it.name }.toSet()
             
             // @Column() - uses default value (blank) -> column name generated from property name (defaultColumn -> defaultColumn)
-            columnNames shouldBe setOf("id", "defaultColumn", "blankColumn", "custom_name", "normalColumn")
+            columnNames shouldBe setOf("id", "defaultColumn", "blankColumn", "custom_name")
             
             // Test entity creation and saving
             val entity = ColumnTestEntityTable.repo.create(
@@ -49,7 +50,12 @@ class ColumnTest {
             
             // Test retrieval
             val found = ColumnTestEntityTable.repo.findById(entity.id)
-            found shouldBe entity
+            found shouldNotBe null
+            found?.id shouldBe entity.id
+            found?.defaultColumn shouldBe entity.defaultColumn
+            found?.blankColumn shouldBe entity.blankColumn
+            found?.customColumn shouldBe entity.customColumn
+            found?.normalColumn shouldBe ""
         }
     }
 
@@ -68,8 +74,8 @@ class ColumnTest {
             // @Column("custom_name") - normal name specification -> uses specified name
             columnNames.contains("custom_name") shouldBe true
             
-            // No annotation -> column name generated from property name
-            columnNames.contains("normalColumn") shouldBe true
+            // No annotation -> not generated as a column
+            columnNames.contains("normalColumn") shouldBe false
         }
     }
 }

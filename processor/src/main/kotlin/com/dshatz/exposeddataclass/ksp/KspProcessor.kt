@@ -39,8 +39,6 @@ import com.dshatz.exposeddataclass.getAnnotation
 import com.dshatz.exposeddataclass.getArgumentAs
 import com.dshatz.exposeddataclass.getPropName
 import com.dshatz.exposeddataclass.hasAnnotation
-import com.dshatz.exposeddataclass.hasIgnoreMarker
-import com.dshatz.exposeddataclass.hasTransientMarker
 import com.dshatz.exposeddataclass.notNull
 import com.dshatz.exposeddataclass.parse
 import com.dshatz.exposeddataclass.valueByKey
@@ -140,40 +138,41 @@ class KspProcessor(
         fun KSPropertyDeclaration.isReferenceProp() =
             this in referenceProps || this in backReferenceProps
 
-        fun KSPropertyDeclaration.validateIgnoreConstructorParam() {
+        fun KSPropertyDeclaration.validateNonColumnConstructorParam() {
             val constructorDefault = constructorParameters[getPropName()] ?: return
             if (!constructorDefault && !type.toTypeName().isNullable) {
                 throw ProcessorException(
-                    "@Ignore property '${getPropName()}' must be nullable or declare a default value in the constructor.",
+                    "Non-column property '${getPropName()}' must be nullable or declare a default value in the constructor.",
                     this
                 )
             }
         }
 
-        fun KSPropertyDeclaration.validateTransientConstructorParam() {
-            val constructorDefault = constructorParameters[getPropName()] ?: return
-            if (!constructorDefault && !type.toTypeName().isNullable) {
-                throw ProcessorException(
-                    "@Transient property '${getPropName()}' must be nullable or declare a default value in the constructor.",
-                    this
-                )
-            }
+        val columnProps = props.filter { it.getAnnotation(Column::class) != null }
+
+        columnProps.filter { it.isReferenceProp() }.forEach {
+            throw ProcessorException(
+                "@Column cannot be applied to @References or @BackReference properties.",
+                it
+            )
         }
 
-        val ignoredProps = props.filter { prop ->
-            if (prop.isReferenceProp()) return@filter false
-            when {
-                prop.hasIgnoreMarker() -> {
-                    prop.validateIgnoreConstructorParam()
-                    true
-                }
-                prop.hasTransientMarker() -> {
-                    prop.validateTransientConstructorParam()
-                    true
-                }
-                !prop.hasBackingField -> true
-                else -> false
-            }
+        columnProps.filterNot { it.hasBackingField }.forEach {
+            throw ProcessorException(
+                "@Column property '${it.getPropName()}' must have a backing field.",
+                it
+            )
+        }
+
+        idProps.map { it.first }.filterNot { it in columnProps }.forEach {
+            throw ProcessorException(
+                "@Id property '${it.getPropName()}' must also be annotated with @Column.",
+                it
+            )
+        }
+
+        props.filterNot { it in columnProps || it.isReferenceProp() }.forEach { prop ->
+            prop.validateNonColumnConstructorParam()
         }
 
         val annotations = entityClass.annotations
@@ -182,7 +181,7 @@ class KspProcessor(
 
         val uniqueAnnotations = mutableMapOf<String, MutableList<ColumnModel>>()
 
-        val columns = (props - ignoredProps.toSet() - referenceProps.toSet() - backReferenceProps.toSet()).associateWith { declaration ->
+        val columns = columnProps.associateWith { declaration ->
             toProperty(declaration, idProps, uniqueAnnotations)
         }
 

@@ -1,5 +1,6 @@
 package com.dshatz.exposed_crud.models
 
+import com.dshatz.exposed_crud.Column
 import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.Id
 import java.util.UUID
@@ -10,7 +11,9 @@ import java.util.UUID
 @Entity
 data class IntIdEntity(
     @Id(autoGenerate = true)
+    @Column
     var id: Int = -1,
+    @Column
     var name: String
 )
 
@@ -20,7 +23,9 @@ data class IntIdEntity(
 @Entity
 data class LongIdEntity(
     @Id(autoGenerate = true)
+    @Column
     var id: Long = -1,
+    @Column
     var name: String
 )
 
@@ -30,7 +35,9 @@ data class LongIdEntity(
 @Entity
 data class UIntIdEntity(
     @Id(autoGenerate = true)
+    @Column
     var id: UInt = 0u,
+    @Column
     var name: String
 )
 
@@ -40,7 +47,9 @@ data class UIntIdEntity(
 @Entity
 data class ULongIdEntity(
     @Id(autoGenerate = true)
+    @Column
     var id: ULong = 0u,
+    @Column
     var name: String
 )
 
@@ -50,7 +59,9 @@ data class ULongIdEntity(
 @Entity
 data class UUIDEntity(
     @Id(autoGenerate = true)
+    @Column
     var id: UUID = Id.UUID_EMPTY,
+    @Column
     var name: String
 )
 

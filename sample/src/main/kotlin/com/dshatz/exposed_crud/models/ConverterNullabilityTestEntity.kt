@@ -1,5 +1,6 @@
 package com.dshatz.exposed_crud.models
 
+import com.dshatz.exposed_crud.Column
 import com.dshatz.exposed_crud.Convert
 import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.Id
@@ -70,21 +71,26 @@ class NonNullableEntityNonNullableDbConverter : AttributeConverter<TestValue, St
 data class ConverterNullabilityTestEntity(
 
     @Id(autoGenerate = true)
+    @Column
     var id: Long = -1,
 
     // Case 1: Entity nullable, DB nullable
+    @Column
     @Convert(NullableEntityNullableDbConverter::class)
     var case1NullableEntityNullableDb: TestValue? = null,
 
     // Case 2: Entity nullable, DB non-nullable
+    @Column
     @Convert(NullableEntityNonNullableDbConverter::class)
     var case2NullableEntityNonNullableDb: TestValue? = null,
 
     // Case 3: Entity non-nullable, DB nullable
+    @Column
     @Convert(NonNullableEntityNullableDbConverter::class)
     var case3NonNullableEntityNullableDb: TestValue = TestValue("default"),
 
     // Case 4: Entity non-nullable, DB non-nullable
+    @Column
     @Convert(NonNullableEntityNonNullableDbConverter::class)
     var case4NonNullableEntityNonNullableDb: TestValue = TestValue("default"),
 

@@ -21,6 +21,7 @@ import com.dshatz.exposed_crud.Table
 @Entity("games")
 class Game(
     @Id(autoGenerate = true)
+    @Column
     var id: Long = -1,
     @Column("console_type")
     var consoleType: String = "",
@@ -28,6 +29,7 @@ class Game(
     var coverType: String = "",
     @Column("game_id")
     var gameId: Long = 0,
+    @Column
     var title: String = ""
 )
 

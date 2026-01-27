@@ -10,14 +10,15 @@ import com.dshatz.exposed_crud.Id
 @Entity("column_test")
 data class ColumnTestEntity(
     @Id(autoGenerate = true)
+    @Column
     var id: Long = -1,
-    @Column()  // 기본값 사용 (blank) - 프로퍼티 이름 기반으로 컬럼명 생성되어야 함
+    @Column()  // Uses default (blank) -> column name from property
     var defaultColumn: String = "",
-    @Column("")  // 명시적으로 빈 문자열 - 프로퍼티 이름 기반으로 컬럼명 생성되어야 함
+    @Column("")  // Explicit blank -> column name from property
     var blankColumn: String = "",
-    @Column("custom_name")  // 정상적인 이름 지정
+    @Column("custom_name")  // Custom name
     var customColumn: String = "",
-    var normalColumn: String = ""  // 어노테이션 없음 - 프로퍼티 이름 기반으로 컬럼명 생성
+    var normalColumn: String = ""  // No annotation -> not generated as a column
 )
 
 
