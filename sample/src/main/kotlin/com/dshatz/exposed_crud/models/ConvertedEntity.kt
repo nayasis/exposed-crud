@@ -5,7 +5,6 @@ import com.dshatz.exposed_crud.interfaces.AttributeConverter
 import com.dshatz.exposed_crud.Convert
 import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.Id
-import com.dshatz.exposed_crud.Varchar
 
 data class Color(val red: Int, val green: Int, val blue: Int) {
     override fun toString(): String = "$red,$green,$blue"
@@ -32,8 +31,7 @@ data class ConvertedEntity(
     @Id
     @Column
     val id: Int = 0,
-    @Column
+    @Column(length = 50)
     @Convert(ColorConverter::class)
-    @Varchar(50)
     val color: Color,
 )

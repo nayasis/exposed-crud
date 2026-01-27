@@ -92,6 +92,12 @@ fun KSAnnotation.valueByKey(name: String): Any? {
     return this.arguments.firstOrNull { it.name?.asString() == name }?.value
 }
 
+fun KSAnnotation.isArgumentDefault(name: String): Boolean {
+    val arg = arguments.firstOrNull { it.name?.asString() == name }
+    val defaultArg = defaultArguments.firstOrNull { it.name?.asString() == name }
+    return arg?.value == defaultArg?.value
+}
+
 fun KSAnnotated?.hasTransientAnnotation(): Boolean {
     return this?.annotations?.any {
         when (it.annotationType.resolve().declaration.qualifiedName?.asString()) {

@@ -18,9 +18,7 @@ import com.dshatz.exposed_crud.MediumText
 import com.dshatz.exposed_crud.References
 import com.dshatz.exposed_crud.Table
 import com.dshatz.exposed_crud.Text
-import com.dshatz.exposed_crud.Unique
 import com.dshatz.exposed_crud.UpdateTimestamp
-import com.dshatz.exposed_crud.Varchar
 import com.dshatz.exposed_crud.interfaces.AttributeConverter
 import com.dshatz.exposeddataclass.ColumnModel
 import com.dshatz.exposeddataclass.ConverterInfo
@@ -248,7 +246,12 @@ class KspProcessor(
         } else {
             declaration.getAnnotation(Default::class)?.getArgumentAs<String>()?.let { CodeBlock.of("%L", it) }
         }
-        val columnName = columnAnnotation?.getArgumentAs<String>()?.takeUnless { it.isBlank() } ?: name.decapitate()
+        val columnName       = (columnAnnotation?.valueByKey("name") as? String)?.takeUnless { it.isBlank() } ?: name.decapitate()
+        val isUnique         = (columnAnnotation?.valueByKey("unique") as? Boolean) ?: false
+        val length           = (columnAnnotation?.valueByKey("length") as? Int)?.takeIf { it > 0 } ?: 255
+        val precision        = (columnAnnotation?.valueByKey("precision") as? Int)?.takeIf { it > 0 } ?: 0
+        val scale            = (columnAnnotation?.valueByKey("scale") as? Int)?.takeIf { it > 0 } ?: 0
+        val columnDefinition = (columnAnnotation?.valueByKey("definition") as? String).orEmpty()
 
         val foreignKey = declaration.getAnnotation(ForeignKey::class)?.let {
             val remoteType = it.getArgumentAs<KSType>()?.toTypeName()!!
@@ -264,11 +267,11 @@ class KspProcessor(
 
         val converter = getConverter(declaration)
 
-        // Validate text column annotations (Varchar, Text, MediumText, LargeText)
-        // - use converter's targetType if present, otherwise use the original property type to check if it's String
+        // Validate text column annotations (Text, MediumText, LargeText)
+        // - use converter's targetType if present, otherwise use the original property type to check if it's String.
         val columnType = (converter?.dbType ?: declaration.type.toTypeName()).notNull
         val isStringProp = columnType == STRING || (columnType is ClassName && columnType.canonicalName == "kotlin.String")
-        val textProps = listOf(Collate::class, Varchar::class, Text::class, MediumText::class, LargeText::class).mapNotNull {
+        val textProps = listOf(Collate::class, Text::class, MediumText::class, LargeText::class).mapNotNull {
             declaration.getAnnotation(it)?.also {
                 // Throw error if not String type
                 if (!isStringProp) {
@@ -293,18 +296,20 @@ class KspProcessor(
             }
         }
         if (textProps.count { it.parse().cls.simpleName != "Collate" } > 1) {
-            throw ProcessorException("Only one of Varchar, Text, MediumText, LargeText can be applied to a String column.", declaration)
+            throw ProcessorException("Only one of Text, MediumText, LargeText can be applied to a String column.", declaration)
         }
         val props = textProps.mapNotNull {
             when (it.annotationType.toTypeName()) {
-                Collate::class.asTypeName() -> FieldAttrs.Collate(it.getArgumentAs())
-                Varchar::class.asTypeName() -> FieldAttrs.ColType.String.Varchar(it.getArgumentAs()!!)
-                Text::class.asTypeName() -> FieldAttrs.ColType.String.Text.GenericText(it.getArgumentAs()!!)
-                MediumText::class.asTypeName() -> FieldAttrs.ColType.String.Text.MediumText(it.getArgumentAs()!!)
-                LargeText::class.asTypeName() -> FieldAttrs.ColType.String.Text.LargeText(it.getArgumentAs()!!)
+                Collate::class.asTypeName()    -> FieldAttrs.Collate(it.getArgumentAs<String>())
+                Text::class.asTypeName()       -> FieldAttrs.ColType.String.Text.GenericText(it.getArgumentAs<Boolean>()!!)
+                MediumText::class.asTypeName() -> FieldAttrs.ColType.String.Text.MediumText(it.getArgumentAs<Boolean>()!!)
+                LargeText::class.asTypeName()  -> FieldAttrs.ColType.String.Text.LargeText(it.getArgumentAs<Boolean>()!!)
                 else -> null
             }
         }
+        val stringLengthAttr = if (isStringProp && props.none { it is FieldAttrs.ColType.String.Text }) {
+            length.let { FieldAttrs.ColType.String.Varchar(it) }
+        } else null
 
         return ColumnModel(
             declaration = declaration,
@@ -315,14 +320,20 @@ class KspProcessor(
             autoIncrementing = autoIncrement,
             default = default,
             foreignKey = foreignKey,
-            attrs = props + otherProps,
+            attrs = props + listOfNotNull(stringLengthAttr) + otherProps,
+            unique = isUnique,
+            length = length,
+            precision = precision,
+            scale = scale,
+            columnDefinition = columnDefinition,
             converter = converter,
             isMutable = declaration.isMutable,
             creationTimestamp = declaration.hasAnnotation(CreationTimestamp::class),
             updateTimestamp = declaration.hasAnnotation(UpdateTimestamp::class),
             idGenerator = idGenerator,
         ).also {
-            declaration.getAnnotation(Unique::class)?.getArgumentAs<String>()?.let { uniqueIndexName ->
+            if (isUnique) {
+                val uniqueIndexName = "unique_${columnName}"
                 uniqueAnnotations.getOrPut(uniqueIndexName) { mutableListOf() }.add(it)
             }
         }

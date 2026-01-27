@@ -37,6 +37,7 @@ import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.ColumnSet
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.ColumnType
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.statements.UpdateBuilder
@@ -637,7 +638,33 @@ class Generator(
         val isSimpleIdWithIdName = isSimpleId && nameInDsl == "id"
         if (isSimpleIdWithIdName) spec.addModifiers(KModifier.OVERRIDE)
         
-        return spec.initializer(initializer.build()).build()
+        val baseInitializer = initializer.build()
+
+        // If a custom columnDefinition is provided via @Column(definition = "..."),
+        // wrap the underlying ColumnType so that DDL uses the given SQL fragment while
+        // delegating all value conversions to the original ColumnType.
+        val finalInitializer = if (columnDefinition.isNotBlank()) {
+            CodeBlock.builder()
+                .add("%L", baseInitializer)
+                .beginControlFlow(".apply")
+                .addStatement("val base = this.columnType")
+                .addStatement(
+                    "this.columnType = object : %T() {\n" +
+                        "    override fun sqlType(): String = %S\n" +
+                        "    override fun nonNullValueToString(value: Any): String = base.nonNullValueToString(value)\n" +
+                        "    override fun notNullValueToDB(value: Any): Any = base.notNullValueToDB(value)\n" +
+                        "    override fun valueFromDB(value: Any): Any = base.valueFromDB(value)\n" +
+                        "}",
+                    ColumnType::class.asClassName(),
+                    columnDefinition
+                )
+                .endControlFlow()
+                .build()
+        } else {
+            baseInitializer
+        }
+
+        return spec.initializer(finalInitializer).build()
     }
 
     private fun ColumnModel.exposedTypeFun(colName: String, overrideType: TypeName? = null): CodeBlock {
@@ -674,6 +701,17 @@ class Generator(
                 length,
                 collate?.let { "\"$it\"" }.toString(), // Quoted collate value or unquoted null,
             )
+        }
+        fun makeDecimalCode(): CodeBlock {
+            return when {
+                precision > 0 || scale > 0 -> CodeBlock.of(
+                    "decimal(%S, %L, %L)",
+                    colName,
+                    if (precision > 0) precision else 0,
+                    scale
+                )
+                else -> makeBuiltinCode("decimal")
+            }
         }
 
         fun makeJsonCode(typeAttr: FieldAttrs.ColType.Json, propType: TypeName): CodeBlock {
@@ -726,7 +764,7 @@ class Generator(
                     "java.time.LocalDateTime" -> makeJavaTimeCode("datetime")
                     "java.time.Instant" -> makeJavaTimeCode("timestamp")
                     "java.time.LocalTime" -> makeJavaTimeCode("time")
-                    "java.math.BigDecimal" -> makeBuiltinCode("decimal")
+                    "java.math.BigDecimal" -> makeDecimalCode()
                     "java.util.UUID" -> makeBuiltinCode("uuid")
                     else -> {
                         // Some other type. Check for json attrs.

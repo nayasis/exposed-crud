@@ -7,7 +7,6 @@ import com.dshatz.exposed_crud.Id
 import com.dshatz.exposed_crud.LargeText
 import com.dshatz.exposed_crud.MediumText
 import com.dshatz.exposed_crud.Text
-import com.dshatz.exposed_crud.Varchar
 import com.dshatz.exposed_crud.interfaces.AttributeConverter
 
 data class TestData(val value: String)
@@ -43,9 +42,8 @@ data class TextColumnWithConverterEntity(
     @Text
     var textField: TestData?,
     
-    @Column
+    @Column(length = 50)
     @Convert(TestDataConverter::class)
-    @Varchar(50)
     var varcharField: TestData?,
 )
 

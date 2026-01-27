@@ -6,7 +6,6 @@ import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.Id
 import com.dshatz.exposed_crud.JsonFormat
 import com.dshatz.exposed_crud.MediumText
-import com.dshatz.exposed_crud.Unique
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -17,8 +16,7 @@ data class Director(
     @Column
     var id: Long = -1,
 
-    @Column
-    @Unique
+    @Column(unique = true)
     @MediumText
     var name: String,
 
