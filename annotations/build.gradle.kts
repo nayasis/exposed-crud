@@ -18,10 +18,13 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.exposed.core)
-    implementation(libs.exposed.dao)
-    implementation(libs.exposed.jdbc)
-    implementation(libs.serial)
+    api(libs.exposed.core)
+    api(libs.exposed.dao)
+    api(libs.exposed.jdbc)
+    api(libs.exposed.java.time)
+    api(libs.exposed.kotlin.datetime)
+    api(libs.exposed.json)
+    api(libs.serial)
 }
 
 mavenPublishing {
