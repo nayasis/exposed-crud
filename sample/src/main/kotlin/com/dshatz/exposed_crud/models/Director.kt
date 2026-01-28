@@ -4,10 +4,9 @@ import com.dshatz.exposed_crud.BackReference
 import com.dshatz.exposed_crud.Column
 import com.dshatz.exposed_crud.Entity
 import com.dshatz.exposed_crud.Id
-import com.dshatz.exposed_crud.JsonFormat
+import com.dshatz.exposed_crud.Json
 import com.dshatz.exposed_crud.MediumText
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 @Entity
 @Serializable
@@ -24,13 +23,6 @@ data class Director(
     var movies: List<Movie>? = null,
 
     @Column
-    @com.dshatz.exposed_crud.Json("director")
+    @Json
     var oldDirector: Director? = null
 )
-
-@JsonFormat("director")
-fun oldDirectorJsonFormat(): Json {
-    return Json {
-        prettyPrint = true
-    }
-}

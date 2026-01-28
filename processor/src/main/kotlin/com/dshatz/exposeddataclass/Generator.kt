@@ -35,9 +35,9 @@ import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.ColumnSet
+import org.jetbrains.exposed.v1.core.ColumnType
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.Table
-import org.jetbrains.exposed.v1.core.ColumnType
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.statements.UpdateBuilder
@@ -54,6 +54,7 @@ class Generator(
     private val finalColumnTypes: MutableMap<Pair<EntityModel, ColumnModel>, TypeName> = mutableMapOf()
 
     private var jsonFormatAccessors: MutableMap<String, MemberName> = mutableMapOf()
+
     fun generate(): Map<EntityModel, FileSpec> {
         // https://www.jetbrains.com/help/exposed/getting-started-with-exposed.html#define-table-object
         models.values.forEach { calculateColumnTypes(it) }
@@ -715,12 +716,20 @@ class Generator(
         }
 
         fun makeJsonCode(typeAttr: FieldAttrs.ColType.Json, propType: TypeName): CodeBlock {
+            val defaultFormatAccessor = MemberName(
+                ClassName("com.dshatz.exposed_crud", "DefaultJsonFormats"),
+                "default"
+            )
+            val formatAccessor = when {
+                typeAttr.formatName.isEmpty() -> null
+                else -> jsonFormatAccessors[typeAttr.formatName]
+            } ?: defaultFormatAccessor
             return CodeBlock.of(
                 "%M<%T>(%S, %M)",
                 MemberName("org.jetbrains.exposed.v1.json", typeAttr.exposedFunction, isExtension = true),
                 propType.notNull,
                 colName,
-                jsonFormatAccessors[typeAttr.formatName] ?: throw ProcessorException("Could not find json format with name ${typeAttr.formatName}. Please define it with @JsonFormat.", declaration)
+                formatAccessor
             )
         }
 

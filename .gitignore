@@ -47,3 +47,4 @@ bin/
 .DS_Store
 /agent.md
 /sample/memory
+/sample/memory*
