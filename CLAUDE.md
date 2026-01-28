@@ -293,6 +293,44 @@ The project uses GitHub Actions (`.github/workflows/build.yaml`):
 - Tests: `./gradlew :sample:check` with test reporting
 - Publishing: Triggered on release creation, publishes to Maven Central
 
+## Claude Code Skills
+
+This project provides custom Claude Code skills to streamline common development workflows. Skills are loaded automatically when you use Claude Code in this repository.
+
+### Available Skills
+
+**Test KSP Processor** (`/test-ksp`)
+- Rebuilds the sample module to regenerate code
+- Inspects generated code in `sample/build/generated/ksp/main/kotlin/`
+- Runs the test suite with diagnostics
+- Use when: testing annotation processor changes, debugging code generation
+
+**Check Generated Code** (`/check-generated`)
+- Quickly displays recently generated table files
+- Shows generated repository code
+- Use when: verifying code generation output without running full tests
+
+**Gradle Build** (`/gradle-build`)
+- Common Gradle tasks (clean, build, test, check)
+- Includes useful flags (--stacktrace, --build-cache)
+- Use when: running builds, troubleshooting Gradle issues
+
+### Using Skills
+
+Skills can be invoked in two ways:
+
+1. **Manual invocation**: Type `/test-ksp` or `/check-generated` directly
+2. **Automatic triggering**: Ask naturally (e.g., "test the processor", "show me the generated code")
+
+### General-Purpose Skills
+
+The following skills from your personal ~/.claude/skills/ are also useful for this project:
+
+- **agent-development**: When creating custom Claude Code agents
+- **skill-development**: When creating new project-specific skills
+- **plugin-structure**: Understanding Claude Code plugin architecture
+- **hook-development**: Creating event hooks for automation
+
 ## Requirements
 
 - JDK 17
