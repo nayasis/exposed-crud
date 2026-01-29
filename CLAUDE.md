@@ -331,6 +331,40 @@ The following skills from your personal ~/.claude/skills/ are also useful for th
 - **plugin-structure**: Understanding Claude Code plugin architecture
 - **hook-development**: Creating event hooks for automation
 
+## Troubleshooting
+
+### Windows IntelliJ + WSL Path Issues
+
+When running tests from Windows IntelliJ on a WSL project, you may encounter incremental compilation errors:
+
+```
+Expected absolute path but found relative path: \mnt\c\project_ref\exposed-crud\sample\src\test\kotlin\...
+```
+
+This occurs because Windows and WSL use different path formats, confusing Kotlin's incremental compilation cache.
+
+**Solutions:**
+
+1. **IntelliJ Cache Invalidation** (most effective)
+   - `File` → `Invalidate Caches...` → `Invalidate and Restart`
+
+2. **Clear Kotlin Compilation Caches**
+   ```bash
+   ./gradlew clean
+   rm -rf .gradle/kotlin sample/build/.kotlin
+   ```
+
+3. **Stop Kotlin Daemon**
+   - IntelliJ: `Tools` → `Kotlin` → `Stop Kotlin Compiler Daemon`
+   - Command line: `./gradlew --stop`
+
+4. **Disable Precise Java Tracking** (already configured in `gradle.properties`)
+   ```properties
+   kotlin.incremental.usePreciseJavaTracking=false
+   ```
+
+Note: Tests will still run successfully even with this warning, as Kotlin falls back to non-incremental compilation.
+
 ## Requirements
 
 - JDK 17

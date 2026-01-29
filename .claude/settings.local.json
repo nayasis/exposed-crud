@@ -6,7 +6,8 @@
       "Bash(git commit:*)",
       "Bash(tree:*)",
       "Bash(./gradlew:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(ls:*)"
     ]
   }
 }
