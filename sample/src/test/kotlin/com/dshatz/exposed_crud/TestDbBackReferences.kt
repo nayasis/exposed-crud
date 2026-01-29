@@ -37,7 +37,6 @@ class TestDbBackReferences {
                 MovieTable,                // Director, Category FK
                 CategoryTranslationsTable, // Category, Language FK
             ),
-            url = "jdbc:h2:mem:test_db_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
     }
 

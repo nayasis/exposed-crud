@@ -20,7 +20,6 @@ class TextColumnWithConverterTest {
     fun init() {
         db = TestHelper.prepareDatabase(
             listOf(TextColumnWithConverterEntityTable),
-            url = "jdbc:h2:mem:text_column_converter_test_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
     }
 

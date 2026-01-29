@@ -1,13 +1,11 @@
 package com.dshatz.exposed_crud
 
-import com.dshatz.exposed_crud.models.Game
-import com.dshatz.exposed_crud.models.GameTable
 import com.dshatz.exposed_crud.helper.TestHelper
+import com.dshatz.exposed_crud.models.GameTable
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -23,7 +21,6 @@ class IndexHashTest {
     fun init() {
         db = TestHelper.prepareDatabase(
             listOf(GameTable),
-            url = "jdbc:h2:mem:index_hash_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
     }
 

@@ -30,7 +30,6 @@ class ExistsByIdTest {
                 CategoryTable,
                 CategoryTranslationsTable
             ),
-            url = "jdbc:h2:mem:exists_by_id_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
     }
 

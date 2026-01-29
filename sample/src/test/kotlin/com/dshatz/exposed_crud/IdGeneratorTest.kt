@@ -25,7 +25,6 @@ class IdGeneratorTest {
         
         db = TestHelper.prepareDatabase(
             listOf(SampleTable),
-            url = "jdbc:h2:mem:id_generator_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
     }
 

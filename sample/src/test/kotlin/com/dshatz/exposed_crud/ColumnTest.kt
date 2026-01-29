@@ -18,8 +18,7 @@ class ColumnTest {
     @BeforeTest
     fun init() {
         db = TestHelper.prepareDatabase(
-            listOf(ColumnTestEntityTable),
-            url = "jdbc:sqlite:memory:column_test_${java.util.UUID.randomUUID()}?foreign_keys=on"
+            listOf(ColumnTestEntityTable)
         )
     }
 

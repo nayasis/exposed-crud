@@ -10,16 +10,14 @@ import java.util.*
 object TestHelper {
 
     fun prepareDatabase(
-        tables: List<Table>,
-        url: String = "jdbc:h2:mem:test_create_returning_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=MYSQL",
+        tables: List<Table> = emptyList(),
+        url: String = "jdbc:h2:mem:test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=MYSQL",
     ): Database {
         val db = Database.connect(url)
         transaction(db) {
             addLogger(StdOutSqlLogger)
-            tables.forEach {
-                SchemaUtils.drop(it)
-                SchemaUtils.create(it)
-            }
+            SchemaUtils.drop(*tables.toTypedArray())
+            SchemaUtils.create(*tables.toTypedArray())
         }
         return db
     }

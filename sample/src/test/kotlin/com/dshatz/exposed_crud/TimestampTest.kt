@@ -25,7 +25,6 @@ class TimestampTest {
                 TimestampEntityTable,
                 StringIdTimestampEntityTable
             ),
-            url = "jdbc:h2:mem:timestamp_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
     }
 

@@ -31,8 +31,7 @@ class TimeEntityTest {
     @BeforeTest
     fun init() {
         db = TestHelper.prepareDatabase(
-            listOf(KotlinTimeEntityTable, JavaTimeEntityTable),
-            url = "jdbc:sqlite:memory:time_db_${java.util.UUID.randomUUID()}?foreign_keys=on"
+            listOf(KotlinTimeEntityTable, JavaTimeEntityTable)
         )
     }
 

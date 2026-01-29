@@ -1,15 +1,17 @@
 package com.dshatz.exposed_crud
 
-import com.dshatz.exposed_crud.models.*
 import com.dshatz.exposed_crud.helper.TestHelper
+import com.dshatz.exposed_crud.models.Director
+import com.dshatz.exposed_crud.models.DirectorTable
+import com.dshatz.exposed_crud.models.LongIdEntity
+import com.dshatz.exposed_crud.models.LongIdEntityTable
+import com.dshatz.exposed_crud.models.repo
 import io.kotest.matchers.shouldBe
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import java.util.*
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -29,7 +31,6 @@ class OrderByTest {
                 DirectorTable,
                 LongIdEntityTable
             ),
-            url = "jdbc:h2:mem:test_orderby_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=MYSQL"
         )
     }
 

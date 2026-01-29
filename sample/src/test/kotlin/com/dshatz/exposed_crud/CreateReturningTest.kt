@@ -30,7 +30,6 @@ class CreateReturningTest {
                 ULongIdEntityTable,
                 UUIDEntityTable
             ),
-            url = "jdbc:h2:mem:test_create_returning_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=MYSQL"
         )
     }
 

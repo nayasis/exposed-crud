@@ -28,7 +28,6 @@ class ConverterNullabilityTest {
     fun init() {
         db = TestHelper.prepareDatabase(
             listOf(ConverterNullabilityTestEntityTable),
-            url = "jdbc:h2:mem:converter_nullability_test_${java.util.UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
     }
 

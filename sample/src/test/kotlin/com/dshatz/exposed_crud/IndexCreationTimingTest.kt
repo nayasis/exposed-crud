@@ -10,7 +10,6 @@ import org.jetbrains.exposed.v1.core.StdOutSqlLogger
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -26,10 +25,7 @@ class IndexCreationTimingTest {
     fun init() {
         // Note: This test intentionally doesn't create tables in init() to test timing
         // So we just connect to the database without creating tables
-        db = Database.connect(
-            "jdbc:h2:mem:index_timing_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY",
-            "org.h2.Driver"
-        )
+        db = TestHelper.prepareDatabase()
     }
 
     @Test

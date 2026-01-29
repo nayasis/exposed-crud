@@ -1,16 +1,15 @@
 package com.dshatz.exposed_crud
 
+import com.dshatz.exposed_crud.helper.TestHelper
 import com.dshatz.exposed_crud.models.EmployeeIndia
 import com.dshatz.exposed_crud.models.EmployeeIndiaTable
 import com.dshatz.exposed_crud.models.EmployeeJapan
 import com.dshatz.exposed_crud.models.EmployeeJapanTable
 import com.dshatz.exposed_crud.models.repo
-import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -26,7 +25,6 @@ class InheritanceTableTest {
                 EmployeeJapanTable,
                 EmployeeIndiaTable,
             ),
-            url = "jdbc:h2:mem:inheritance_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
         
         transaction(db) {

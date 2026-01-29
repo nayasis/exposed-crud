@@ -1,15 +1,14 @@
 package com.dshatz.exposed_crud
 
+import com.dshatz.exposed_crud.helper.TestHelper
 import com.dshatz.exposed_crud.models.IgnoreEntity
 import com.dshatz.exposed_crud.models.IgnoreEntityTable
 import com.dshatz.exposed_crud.models.repo
-import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -21,7 +20,6 @@ class IgnoreTest {
     fun init() {
         db = TestHelper.prepareDatabase(
             listOf(IgnoreEntityTable),
-            url = "jdbc:h2:mem:ignore_test_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=LEGACY"
         )
     }
 

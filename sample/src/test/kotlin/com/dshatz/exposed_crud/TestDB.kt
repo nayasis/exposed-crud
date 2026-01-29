@@ -43,8 +43,7 @@ class TestDB {
                 CategoryTable,
                 CategoryTranslationsTable,
                 ConvertedEntityTable,
-            ),
-            url = "jdbc:sqlite:memory:test_db_${java.util.UUID.randomUUID()}?foreign_keys=on"
+            )
         )
     }
 

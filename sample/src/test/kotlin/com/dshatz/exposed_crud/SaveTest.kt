@@ -1,8 +1,23 @@
 package com.dshatz.exposed_crud
 
-import com.dshatz.exposed_crud.Id
-import com.dshatz.exposed_crud.models.*
 import com.dshatz.exposed_crud.helper.TestHelper
+import com.dshatz.exposed_crud.models.Category
+import com.dshatz.exposed_crud.models.CategoryTable
+import com.dshatz.exposed_crud.models.CategoryTranslations
+import com.dshatz.exposed_crud.models.CategoryTranslationsTable
+import com.dshatz.exposed_crud.models.IntIdEntity
+import com.dshatz.exposed_crud.models.IntIdEntityTable
+import com.dshatz.exposed_crud.models.Language
+import com.dshatz.exposed_crud.models.LanguageTable
+import com.dshatz.exposed_crud.models.LongIdEntity
+import com.dshatz.exposed_crud.models.LongIdEntityTable
+import com.dshatz.exposed_crud.models.Sample
+import com.dshatz.exposed_crud.models.SampleIdGenerator
+import com.dshatz.exposed_crud.models.SampleTable
+import com.dshatz.exposed_crud.models.UUIDEntity
+import com.dshatz.exposed_crud.models.UUIDEntityTable
+import com.dshatz.exposed_crud.models.findById
+import com.dshatz.exposed_crud.models.repo
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -37,7 +52,6 @@ class SaveTest {
                 LanguageTable,
                 CategoryTranslationsTable
             ),
-            url = "jdbc:h2:mem:test_save_${UUID.randomUUID()};DB_CLOSE_DELAY=-1;MODE=MYSQL"
         )
     }
 
