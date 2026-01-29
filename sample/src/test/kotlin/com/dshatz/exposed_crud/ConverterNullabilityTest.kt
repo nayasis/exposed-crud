@@ -1,13 +1,14 @@
 package com.dshatz.exposed_crud
 
+import com.dshatz.exposed_crud.helper.TestHelper
 import com.dshatz.exposed_crud.models.ConverterNullabilityTestEntity
 import com.dshatz.exposed_crud.models.ConverterNullabilityTestEntityTable
 import com.dshatz.exposed_crud.models.TestValue
 import com.dshatz.exposed_crud.models.repo
-import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -116,6 +117,27 @@ class ConverterNullabilityTest {
             val found = ConverterNullabilityTestEntityTable.repo.findById(entity.id)
             found shouldNotBe null
             found?.case3NonNullableEntityNullableDb shouldBe testValue
+        }
+    }
+
+    @Test
+    fun `test case 3 - Entity non-nullable, DB nullable with NULL in DB`() {
+        transaction(db) {
+            // Insert a row with NULL for case3 column using direct insert
+            ConverterNullabilityTestEntityTable.insert {
+                // Set required non-null columns
+                it[case4NonNullableEntityNonNullableDb] = TestValue("case4")
+                // Don't set case3NonNullableEntityNullableDb, leaving it NULL in DB
+                // ID will be auto-generated
+            }
+
+            // Get the inserted row using repo (which calls toEntity())
+            val all = ConverterNullabilityTestEntityTable.repo.selectAll()
+            all.size shouldBe 1
+
+            val found = all.first()
+            // toEntity() should handle NULL and call converter to get default value
+            found.case3NonNullableEntityNullableDb shouldBe TestValue("default")
         }
     }
 

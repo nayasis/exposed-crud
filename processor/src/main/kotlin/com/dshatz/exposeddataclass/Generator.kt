@@ -434,12 +434,21 @@ class Generator(
         val convertingCode = CodeBlock.builder()
 
         columns.forEach {
-            if (it in primaryKey || it.foreignKey != null) {
-                convertingCode.addStatement("%N = row[%N].value,", it.nameInEntity, it.nameInDsl)
-            } else {
-                val usesNullableColumn = it.converter != null && it.converter.dbType.isNullable && !it.type.isNullable
-                val valueExpr = if (usesNullableColumn) "row[%N]!!" else "row[%N]"
-                convertingCode.addStatement("%N = $valueExpr,", it.nameInEntity, it.nameInDsl)
+            when {
+                it in primaryKey || it.foreignKey != null ->
+                    convertingCode.addStatement("%N = row[%N].value,", it.nameInEntity, it.nameInDsl)
+                // If DB is nullable but entity is non-nullable, Exposed's transform skips null values
+                // So use elvis operator to call converter with null to get the default value
+                it.converter != null && it.converter.dbType.isNullable && !it.type.isNullable -> {
+                    convertingCode.addStatement(
+                        "%N = row[%N] ?: %T().convertToEntityAttribute(null),",
+                        it.nameInEntity,
+                        it.nameInDsl,
+                        it.converter.converterClass
+                    )
+                }
+                else ->
+                    convertingCode.addStatement("%N = row[%N],", it.nameInEntity, it.nameInDsl)
             }
         }
         val member = MemberName("com.dshatz.exposed_crud.typed", "parseReferencedEntity")
@@ -489,12 +498,20 @@ class Generator(
             // For regular class, create object and assign properties
             val assignmentCode = CodeBlock.builder()
             columns.forEach {
-                if (it in primaryKey || it.foreignKey != null) {
-                    assignmentCode.addStatement("%N = row[%T.%N].value", it.nameInEntity, tableClass, it.nameInDsl)
-                } else {
-                    val usesNullableColumn = it.converter != null && it.converter.dbType.isNullable && !it.type.isNullable
-                    val valueExpr = if (usesNullableColumn) "row[%T.%N]!!" else "row[%T.%N]"
-                    assignmentCode.addStatement("%N = $valueExpr", it.nameInEntity, tableClass, it.nameInDsl)
+                when {
+                    it in primaryKey || it.foreignKey != null ->
+                        assignmentCode.addStatement("%N = row[%T.%N].value", it.nameInEntity, tableClass, it.nameInDsl)
+                    it.converter != null && it.converter.dbType.isNullable && !it.type.isNullable -> {
+                        assignmentCode.addStatement(
+                            "%N = row[%T.%N] ?: %T().convertToEntityAttribute(null)",
+                            it.nameInEntity,
+                            tableClass,
+                            it.nameInDsl,
+                            it.converter.converterClass
+                        )
+                    }
+                    else ->
+                        assignmentCode.addStatement("%N = row[%T.%N]", it.nameInEntity, tableClass, it.nameInDsl)
                 }
             }
             references.forEach { (column, refInfo) ->
@@ -566,18 +583,23 @@ class Generator(
             if (converter != null) {
                 initializer.add(exposedTypeFun(columnName, converter.dbType))
 
-                val columnType = if (converter.dbType.isNullable || type.isNullable) {
-                    initializer.add(".nullable()")
-                    type.nullable
-                } else type
-
                 val entityType = converter.entityType
                 val dbType     = converter.dbType
 
+                // .transform() inherits nullability from base column
+                // Call .nullable() if either DB or entity type is nullable
+                val columnType = if (dbType.isNullable || entityType.isNullable) {
+                    initializer.add(".nullable()")
+                    entityType.nullable
+                } else {
+                    entityType
+                }
+
                 val converterInstance = CodeBlock.of("%T()", converter.converterClass)
 
+                // Read lambda: DB type -> entity type
                 val readLambda = when {
-                    entityType.isNullable && !dbType.isNullable ->
+                    !dbType.isNullable && entityType.isNullable ->
                         CodeBlock.of("{ %L.convertToEntityAttribute(it!!) }", converterInstance)
                     else ->
                         CodeBlock.of("{ %L.convertToEntityAttribute(it) }", converterInstance)
