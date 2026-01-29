@@ -48,3 +48,4 @@ bin/
 /agent.md
 /sample/memory
 /sample/memory*
+sample/memory:*
