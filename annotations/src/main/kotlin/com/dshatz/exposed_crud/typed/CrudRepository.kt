@@ -1,14 +1,16 @@
 package com.dshatz.exposed_crud.typed
 
+import com.dshatz.exposed_crud.Id
+import com.dshatz.exposed_crud.IdGenerator
 import org.jetbrains.exposed.v1.core.ColumnSet
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
-import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.statements.UpdateStatement
+import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.SizedIterable
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -17,13 +19,11 @@ import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.mapLazy
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
-import com.dshatz.exposed_crud.Id
-import com.dshatz.exposed_crud.IdGenerator
+import java.sql.SQLException
+import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.memberProperties
-import java.util.UUID
-import java.sql.SQLException
 
 data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<ColumnSet> = emptyList()) where T: IdTable<ID>, T: IEntityTable<E, ID> {
 
@@ -159,18 +159,14 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
      */
     fun save(data: E): E {
         val id = table.makePK(data).value
-        return if (id is CompositeID) {
-            runCatching { create(data) }.getOrElse { error ->
-                if (isDuplicateKeyException(error)) {
-                    update(data)
-                } else {
-                    throw error
+        return when {
+            id is CompositeID ->
+                when {
+                    existsById(id) -> update(data)
+                    else -> create(data)
                 }
-            }
-        } else if (isIdEmpty(id)) {
-            create(data)
-        } else {
-            update(data)
+            isIdEmpty(id) -> create(data)
+            else          -> update(data)
         }
     }
 
