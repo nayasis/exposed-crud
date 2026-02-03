@@ -257,6 +257,19 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
         }).limit(1).firstOrNull()?.let(::toEntity)
     }
 
+    /**
+     * Check if an entity exists by its primary key.
+     *
+     * @param id Primary key value
+     * @return true if entity exists, false otherwise
+     */
+    fun existsById(id: ID): Boolean {
+        val eid = EntityID(id, table)
+        return selectWithJoins().where({
+            table.id eq eid
+        }).limit(1).any()
+    }
+
     private fun toEntity(resultRow: ResultRow): E {
         return table.toEntity(resultRow, related)
     }

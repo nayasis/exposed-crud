@@ -184,9 +184,9 @@ class Generator(
                 .apply {
                     if (tableModel.primaryKey is PrimaryKey.Composite) {
                         addFunction(generateFindById(tableModel))
+                        addFunction(generateExistsById(tableModel))
                     }
                 }
-                .addFunction(generateExistsById(tableModel))
                 .addFunction(generateDeleteById(tableModel))
                 .apply {
                     if (tableModel.columns.any { it.foreignKey != null }) {
