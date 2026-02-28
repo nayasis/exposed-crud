@@ -28,8 +28,8 @@ class ColumnTest {
             // Verify column names
             val columnNames = ColumnTestEntityTable.columns.map { it.name }.toSet()
             
-            // @Column() - uses default value (blank) -> column name generated from property name (defaultColumn -> defaultColumn)
-            columnNames shouldBe setOf("id", "defaultColumn", "blankColumn", "custom_name")
+            // @Column() - uses default value (blank) -> column name generated from property name in snake_case.
+            columnNames shouldBe setOf("id", "default_column", "blank_column", "custom_name")
             
             // Test entity creation and saving
             val entity = ColumnTestEntityTable.repo.create(
@@ -64,11 +64,11 @@ class ColumnTest {
             // Verify that both @Column() and @Column("") generate column names based on property names
             val columnNames = ColumnTestEntityTable.columns.map { it.name }.toSet()
             
-            // @Column() - uses default value (blank) -> column name generated from property name
-            columnNames.contains("defaultColumn") shouldBe true
+            // @Column() - uses default value (blank) -> column name generated from property name in snake_case
+            columnNames.contains("default_column") shouldBe true
             
-            // @Column("") - explicitly empty string -> column name generated from property name
-            columnNames.contains("blankColumn") shouldBe true
+            // @Column("") - explicitly empty string -> column name generated from property name in snake_case
+            columnNames.contains("blank_column") shouldBe true
             
             // @Column("custom_name") - normal name specification -> uses specified name
             columnNames.contains("custom_name") shouldBe true

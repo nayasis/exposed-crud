@@ -12,9 +12,9 @@ data class ColumnTestEntity(
     @Id(autoGenerate = true)
     @Column
     var id: Long = -1,
-    @Column()  // Uses default (blank) -> column name from property
+    @Column()  // Uses default (blank) -> column name from property (snake_case)
     var defaultColumn: String = "",
-    @Column("")  // Explicit blank -> column name from property
+    @Column("")  // Explicit blank -> column name from property (snake_case)
     var blankColumn: String = "",
     @Column("custom_name")  // Custom name
     var customColumn: String = "",

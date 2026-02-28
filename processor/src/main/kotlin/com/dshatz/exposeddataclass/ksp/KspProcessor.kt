@@ -40,6 +40,8 @@ import com.dshatz.exposeddataclass.hasAnnotation
 import com.dshatz.exposeddataclass.messageWithSymbolContext
 import com.dshatz.exposeddataclass.notNull
 import com.dshatz.exposeddataclass.parse
+import com.dshatz.exposeddataclass.toSnakeCaseLower
+import com.dshatz.exposeddataclass.toSnakeCaseUpper
 import com.dshatz.exposeddataclass.valueByKey
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
@@ -69,6 +71,8 @@ class KspProcessor(
     private val options: Map<String, String>,
     private val basePackage: String = "com.exposeddataclass"
 ) : SymbolProcessor {
+    private val defaultFieldNameStrategy: DefaultFieldNameStrategy =
+        DefaultFieldNameStrategy.from(options[OPTION_DEFAULT_FIELD_NAME_STRATEGY])
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val annotated = resolver.getSymbolsWithAnnotation(Entity::class.qualifiedName!!)
@@ -247,7 +251,12 @@ class KspProcessor(
         } else {
             declaration.getAnnotation(Default::class)?.getArgumentAs<String>()?.let { CodeBlock.of("%L", it) }
         }
-        val columnName       = (columnAnnotation?.valueByKey("name") as? String)?.takeUnless { it.isBlank() } ?: name.decapitate()
+        val explicitColumnName = (columnAnnotation?.valueByKey("name") as? String)?.trim()
+        val columnName = if (!explicitColumnName.isNullOrEmpty()) {
+            explicitColumnName
+        } else {
+            defaultFieldNameStrategy.toColumnName(name)
+        }
         val isUnique         = (columnAnnotation?.valueByKey("unique") as? Boolean) ?: false
         val length           = (columnAnnotation?.valueByKey("length") as? Int)?.takeIf { it > 0 } ?: 255
         val precision        = (columnAnnotation?.valueByKey("precision") as? Int)?.takeIf { it > 0 } ?: 0
@@ -436,6 +445,36 @@ class KspProcessor(
         }
     }
 
+    private enum class DefaultFieldNameStrategy {
+        SNAKE_CASE_LOWER,
+        SNAKE_CASE_UPPER,
+        CAMEL_CASE,
+        NONE;
+
+        fun toColumnName(fieldName: String): String = when (this) {
+            SNAKE_CASE_LOWER -> fieldName.toSnakeCaseLower()
+            SNAKE_CASE_UPPER -> fieldName.toSnakeCaseUpper()
+            CAMEL_CASE -> fieldName.decapitate()
+            NONE -> fieldName
+        }
+
+        companion object {
+            fun from(raw: String?): DefaultFieldNameStrategy {
+                return when (raw?.trim()?.lowercase()) {
+                    null, "", "snake_case", "snake_case_lower", "snake_name", "snake_name_lower" -> SNAKE_CASE_LOWER
+                    "snake_case_upper", "snake_name_upper" -> SNAKE_CASE_UPPER
+                    "camel_case", "camel", "as_is" -> CAMEL_CASE
+                    "none" -> NONE
+                    else -> SNAKE_CASE_LOWER
+                }
+            }
+        }
+    }
+
+    companion object {
+        private const val OPTION_DEFAULT_FIELD_NAME_STRATEGY = "exposedCrud.defaultFieldNameStrategy"
+    }
+
     private fun validateTimestampAnnotation(declaration: KSPropertyDeclaration) {
         val hasCreationTimestamp = declaration.hasAnnotation(CreationTimestamp::class)
         val hasUpdateTimestamp   = declaration.hasAnnotation(UpdateTimestamp::class)
@@ -466,7 +505,7 @@ class KspProcessor(
     private fun getTableName(entityClass: KSClassDeclaration): String {
         val nameFromTableAnnotation  = entityClass.getAnnotation(Table::class)?.valueByKey("name")?.toString()?.takeUnless { it.isBlank() }
         val nameFromEntityAnnotation = entityClass.getAnnotation(Entity::class)?.valueByKey("name")?.toString()?.takeUnless { it.isBlank() }
-        return nameFromTableAnnotation ?: nameFromEntityAnnotation ?: entityClass.toClassName().simpleName
+        return nameFromTableAnnotation ?: nameFromEntityAnnotation ?: defaultFieldNameStrategy.toColumnName(entityClass.toClassName().simpleName)
     }
 
 

@@ -37,7 +37,7 @@ class IgnoreTest {
             columnNames.size shouldBe 4 // id, name, ignoredField, active
             columnNames.contains("id") shouldBe true
             columnNames.contains("name") shouldBe true
-            columnNames.contains("ignoredField") shouldBe true
+            columnNames.contains("ignored_field") shouldBe true
             columnNames.contains("active") shouldBe true
             
             // verify non-column fields are not present

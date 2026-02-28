@@ -107,10 +107,10 @@ class TextColumnWithConverterTest {
 
             columnNames shouldBe setOf(
                 "id",
-                "largeTextField",
-                "mediumTextField",
-                "textField",
-                "varcharField"
+                "large_text_field",
+                "medium_text_field",
+                "text_field",
+                "varchar_field"
             )
         }
     }

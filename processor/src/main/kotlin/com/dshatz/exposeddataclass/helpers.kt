@@ -85,6 +85,22 @@ fun KSValueParameter.getName(): String {
 
 fun String.decapitate(): String = replaceFirstChar { it.lowercase() }
 
+fun String.toSnakeCaseLower(): String {
+    return toSnakeCase().lowercase()
+}
+
+fun String.toSnakeCaseUpper(): String {
+    return toSnakeCase().uppercase()
+}
+
+private fun String.toSnakeCase(): String {
+    if (isEmpty()) return this
+    return this
+        .replace(Regex("([A-Z]+)([A-Z][a-z])"), "$1_$2")
+        .replace(Regex("([a-z0-9])([A-Z])"), "$1_$2")
+        .replace('-', '_')
+}
+
 inline fun <reified T> KSAnnotation.getArgumentAs(index: Int = 0): T? {
     return arguments.getOrNull(index)?.value?.let {
         it as T

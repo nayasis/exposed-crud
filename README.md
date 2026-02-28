@@ -29,6 +29,16 @@ dependencies {
 }
 ```
 
+Optional KSP arg for default field-to-column naming:
+```kotlin
+ksp {
+  arg("exposedCrud.defaultFieldNameStrategy", "snake_case_lower") // default
+  // arg("exposedCrud.defaultFieldNameStrategy", "snake_case_upper")
+  // arg("exposedCrud.defaultFieldNameStrategy", "camel_case")
+  // arg("exposedCrud.defaultFieldNameStrategy", "none") // use field name as-is
+}
+```
+
 ## Usage
 ### 1. Define your entity with `@Entity`
 Making a property nullable (e.g. `originalTitle: String?`) will make it nullable in the database as well.
@@ -45,7 +55,11 @@ data class Movie(
 )
 ```
 
-You can use `@Varchar`, `@Text`, `@MediumText`, `@LargeText` to specify what type of column to use for your String property. If none are applied, simple exposed `text` will be used.
+You can use `@Text`, `@MediumText`, `@LargeText` to specify what type of column to use for your String property. If none are applied, simple exposed `text` will be used.
+
+When `@Column(name = "...")` is set, that name is used as-is.
+When it is blank, the default field naming strategy is applied (`snake_case_lower` by default).
+The same strategy is also used for default table names when both `@Table(name)` and `@Entity(name)` are blank.
 
 `@Collate` annotation is also available.
 
