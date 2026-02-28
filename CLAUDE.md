@@ -213,7 +213,7 @@ The processor determines the final column type from the converter's `DB` type pa
 ### Text Column Types
 
 String properties can use different SQL text types:
-- `@Varchar(length)` → `VARCHAR(length)`
+- `@Column(length=10)` → `VARCHAR(10)`
 - `@Text` → `TEXT`
 - `@MediumText` → `MEDIUMTEXT`
 - `@LargeText` → `LONGTEXT`
