@@ -37,6 +37,7 @@ import com.dshatz.exposeddataclass.getAnnotation
 import com.dshatz.exposeddataclass.getArgumentAs
 import com.dshatz.exposeddataclass.getPropName
 import com.dshatz.exposeddataclass.hasAnnotation
+import com.dshatz.exposeddataclass.messageWithSymbolContext
 import com.dshatz.exposeddataclass.notNull
 import com.dshatz.exposeddataclass.parse
 import com.dshatz.exposeddataclass.valueByKey
@@ -93,7 +94,7 @@ class KspProcessor(
 
             return emptyList()
         } catch (e: ProcessorException) {
-            logger.error(e.message!!, e.symbol)
+            logger.error(e.messageWithSymbolContext(), e.symbol)
             return annotated.toList()
         }
     }

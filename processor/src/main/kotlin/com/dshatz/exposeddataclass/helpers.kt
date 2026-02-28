@@ -8,6 +8,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
+import com.google.devtools.ksp.symbol.FileLocation
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -41,15 +42,34 @@ fun KSAnnotated.getAnnotation(cls: KClass<*>): KSAnnotation? {
 
 class ProcessorException(message: String, val symbol: KSNode): Exception(message)
 
-/*fun KSPropertyDeclaration.getPropType(): PropType {
-    val resolved = type.resolve()
-    return when (resolved.declaration.qualifiedName?.asString()) {
-        String::class.qualifiedName -> PropType.String
-        Long::class.qualifiedName -> PropType.Long
-        Int::class.qualifiedName -> PropType.Int
-        else -> throw ProcessorException("Unknown type ${resolved.declaration.qualifiedName?.asString()}", this)
+fun ProcessorException.messageWithSymbolContext(): String {
+    val base = message.orEmpty()
+    val context = symbol.describeSymbolContext() ?: return base
+    return "$base ($context)"
+}
+
+private fun KSNode.describeSymbolContext(): String? {
+    val parts = mutableListOf<String>()
+
+    when (this) {
+        is KSPropertyDeclaration -> {
+            parts += "class=${parentDeclaration?.qualifiedName?.asString() ?: "<unknown>"}"
+            parts += "field=${getPropName()}"
+        }
+        is KSClassDeclaration -> {
+            parts += "class=${qualifiedName?.asString() ?: simpleName.asString()}"
+        }
+        is KSValueParameter -> {
+            parts += "parameter=${getName()}"
+        }
     }
-}*/
+
+    (location as? FileLocation)?.let {
+        parts += "location=${it.filePath}:${it.lineNumber}"
+    }
+
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(", ")
+}
 
 fun KSPropertyDeclaration.getPropName(): String {
     return simpleName.asString()
