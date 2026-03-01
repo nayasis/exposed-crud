@@ -4,13 +4,15 @@ import com.dshatz.exposed_crud.models.StringIdTimestampEntity
 import com.dshatz.exposed_crud.models.StringIdTimestampEntityTable
 import com.dshatz.exposed_crud.models.TimestampEntity
 import com.dshatz.exposed_crud.models.TimestampEntityTable
+import com.dshatz.exposed_crud.models.GeneratedIdTimestampEntity
+import com.dshatz.exposed_crud.models.GeneratedIdTimestampEntityIdGenerator
+import com.dshatz.exposed_crud.models.GeneratedIdTimestampEntityTable
 import com.dshatz.exposed_crud.models.repo
 import com.dshatz.exposed_crud.helper.TestHelper
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -20,10 +22,12 @@ class TimestampTest {
 
     @BeforeTest
     fun init() {
+        GeneratedIdTimestampEntityIdGenerator.seq = 0
         db = TestHelper.prepareDatabase(
             listOf(
                 TimestampEntityTable,
-                StringIdTimestampEntityTable
+                StringIdTimestampEntityTable,
+                GeneratedIdTimestampEntityTable
             ),
         )
     }
@@ -263,6 +267,18 @@ class TimestampTest {
             updatedNonAuto?.createdAt shouldBe nonAutoEntity.createdAt
             updatedNonAuto?.updatedAt shouldNotBe null
             updatedNonAuto?.updatedAt shouldNotBe nonAutoEntity.updatedAt
+        }
+    }
+
+    @Test
+    fun `CreationTimestamp should be set on insert for autoGenerate with custom IdGenerator`() {
+        transaction(db) {
+            val inserted = GeneratedIdTimestampEntityTable.repo.create(
+                GeneratedIdTimestampEntity(name = "custom-id")
+            )
+
+            inserted.id shouldBe "gid_0"
+            inserted.createdAt shouldNotBe null
         }
     }
 }

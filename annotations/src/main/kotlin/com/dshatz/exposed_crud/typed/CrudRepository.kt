@@ -83,7 +83,8 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
 
                 table.setId(data, id)
                 table.insert {
-                    table.write(it, data)
+                    it[table.id] = EntityID(id, table)
+                    table.writeExceptAutoIncrementing(it, data)
                 }
                 data
             }
