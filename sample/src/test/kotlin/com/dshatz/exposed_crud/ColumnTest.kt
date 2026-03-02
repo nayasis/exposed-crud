@@ -77,5 +77,18 @@ class ColumnTest {
             columnNames.contains("normalColumn") shouldBe false
         }
     }
+
+    @Test
+    fun `default naming strategy should generate snake_case_lower not snake_case_upper`() {
+        transaction(db) {
+            val columnNames = ColumnTestEntityTable.columns.map { it.name }.toSet()
+
+            columnNames.contains("default_column") shouldBe true
+            columnNames.contains("blank_column") shouldBe true
+
+            columnNames.contains("DEFAULT_COLUMN") shouldBe false
+            columnNames.contains("BLANK_COLUMN") shouldBe false
+        }
+    }
 }
 
