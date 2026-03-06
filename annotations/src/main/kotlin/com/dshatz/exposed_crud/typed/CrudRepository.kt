@@ -75,7 +75,6 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
     fun create(data: E): E {
         return when {
             autoGenerate && idGenerator != null -> {
-
                 @Suppress("UNCHECKED_CAST")
                 val id = runCatching { idGenerator!!.generate(data) }.onFailure { e ->
                     throw IllegalStateException("Cannot generate id", e)
@@ -161,13 +160,14 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
     fun save(data: E): E {
         val id = table.makePK(data).value
         return when {
-            id is CompositeID ->
+            autoGenerate -> {
                 when {
-                    existsById(id) -> update(data)
-                    else -> create(data)
+                    isIdEmpty(id) -> create(data)
+                    else -> update(data)
                 }
-            isIdEmpty(id) -> create(data)
-            else          -> update(data)
+            }
+            existsById(id) -> update(data)
+            else -> create(data)
         }
     }
 
