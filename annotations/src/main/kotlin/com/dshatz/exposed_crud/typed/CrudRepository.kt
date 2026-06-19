@@ -64,7 +64,7 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
      * If this repo has related entities defined using [withRelated], corresponding Reference properties will be populated.
      */
     fun selectAll(): List<E> {
-        return selectWithJoins().map(::toEntity)
+        return select().toList()
     }
 
     /**
@@ -213,7 +213,7 @@ data class CrudRepository<T, ID : Any, E : Any>(val table: T, val related: List<
      * Start a `SELECT`.
      */
     fun select(): TypedSelect<T, E, ID> {
-        return TypedSelect(table, selectWithJoins())
+        return TypedSelect(table, selectWithJoins(), related)
     }
 
     /**
