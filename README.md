@@ -1,4 +1,4 @@
-![](https://github.com/dshatz/exposed-crud/actions/workflows/build.yaml/badge.svg)
+![](https://github.com/nayasis/exposed-crud/actions/workflows/build.yaml/badge.svg)
 # Exposed (JetBrains) CRUD repository generator. 
 
 This is a KSP processor to simplify working with [Jetbrains Exposed](https://github.com/JetBrains/Exposed).
@@ -10,12 +10,12 @@ Based on your annotations this library will generate:
  - Exposed table DSL.
  - A `CrudRepository` class with strongly-typed CRUD methods based on your data class.
 
-[Sample data classes](https://github.com/dshatz/exposed-crud/tree/main/sample/src/main/kotlin/com/dshatz/exposed_crud/models)
+[Sample data classes](https://github.com/nayasis/exposed-crud/tree/main/sample/src/main/kotlin/com/dshatz/exposed_crud/models)
 
-[Sample usage (test class)](https://github.com/dshatz/exposed-crud/blob/main/sample/src/test/kotlin/com/dshatz/exposed_crud/TestDB.kt)
+[Sample usage (test class)](https://github.com/nayasis/exposed-crud/blob/main/sample/src/test/kotlin/com/dshatz/exposed_crud/TestDB.kt)
 
 ## Installation
-![](https://img.shields.io/maven-central/v/com.dshatz.exposed-crud/lib)
+![](https://img.shields.io/maven-central/v/io.github.nayasis/exposed-crud)
 
 ```kotlin
 plugins {
@@ -23,8 +23,8 @@ plugins {
 }
 
 dependencies {
-  ksp("com.dshatz.exposed-crud:processor:1.0.3")
-  implementation("com.dshatz.exposed-crud:lib:1.0.3")
+  ksp("io.github.nayasis:exposed-crud-processor:0.1.0")
+  implementation("io.github.nayasis:exposed-crud:0.1.0")
   // also add exposed-core
 }
 ```

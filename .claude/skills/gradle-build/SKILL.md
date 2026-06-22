@@ -119,10 +119,10 @@ Published to: `~/.m2/repository/`
 
 ### Publish to Maven Central
 
-Requires credentials and version property:
+Requires credentials and the `mavenReleaseVersion` property:
 
 ```bash
-./gradlew :processor:publishAndReleaseToMavenCentral :annotations:publishAndReleaseToMavenCentral -Pversion=X.Y.Z
+./gradlew publish -PmavenReleaseVersion=X.Y.Z
 ```
 
 **Prerequisites:**
@@ -277,7 +277,7 @@ Force dependency refresh:
 ./gradlew publishToMavenLocal
 
 # Publish to Maven Central (with version)
-./gradlew :processor:publishAndReleaseToMavenCentral :annotations:publishAndReleaseToMavenCentral -Pversion=1.2.3
+./gradlew publish -PmavenReleaseVersion=1.2.3
 ```
 
 ## Notes

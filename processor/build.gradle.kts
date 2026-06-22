@@ -5,13 +5,8 @@ plugins {
     alias(libs.plugins.vanniktech.mavenPublish)
 }
 
-group = "com.dshatz.exposed-crud"
-version = when {
-    project.hasProperty("version") && project.property("version").let { it != "" && it != "unspecified" } -> {
-        project.property("version") as String
-    }
-    else -> "0.1.0-SNAPSHOT"
-}
+group = rootProject.group
+version = rootProject.version
 
 kotlin {
     jvmToolchain(17)
@@ -31,28 +26,29 @@ mavenPublishing {
     if(listOf("publishToMavenLocal","publishMavenPublicationToMavenLocal").none{gradle.startParameter.taskNames.contains(it)}) {
         signAllPublications()
     }
-    coordinates(project.group.toString(), "processor")
+    coordinates(project.group.toString(), "exposed-crud-processor")
     pom {
         name = "Exposed-CRUD"
         description = "Exposed CRUD repository generator."
         inceptionYear = "2025"
-        url = "https://github.com/dshatz/exposed-crud/"
+        url = "https://github.com/nayasis/exposed-crud/"
         licenses {
             license {
                 name = "GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007"
-                url = "https://github.com/dshatz/openapi2ktor/blob/main/LICENSE"
+                url = "https://github.com/nayasis/exposed-crud/blob/main/LICENSE"
             }
         }
         developers {
             developer {
-                id = "dshatz"
-                name = "Daniels Šatcs"
-                email = "dev@dshatz.com"
+                id = "nayasis"
+                name = "nayasis"
+                email = "nayasis@gmail.com"
             }
         }
         scm {
-            url = "https://github.com/dshatz/exposed-crud"
-            connection = "git@github.com:dshatz/exposed-crud.git"
+            url = "https://github.com/nayasis/exposed-crud"
+            connection = "scm:git:github.com/nayasis/exposed-crud.git"
+            developerConnection = "scm:git:ssh://github.com/nayasis/exposed-crud.git"
         }
     }
 }

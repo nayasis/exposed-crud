@@ -37,8 +37,8 @@ This is a KSP (Kotlin Symbol Processing) annotation processor that generates Exp
 # Publish to Maven Local for testing
 ./gradlew publishToMavenLocal
 
-# Publish to Maven Central (requires credentials and version property)
-./gradlew :processor:publishAndReleaseToMavenCentral :annotations:publishAndReleaseToMavenCentral -Pversion=X.Y.Z
+# Publish to Maven Central (requires credentials and mavenReleaseVersion property)
+./gradlew publish -PmavenReleaseVersion=X.Y.Z
 ```
 
 ### Development Workflow
