@@ -3,7 +3,6 @@ name: Publish to Maven Central
 on:
   push:
     branches:
-      - release
       - release/**
   workflow_dispatch:
 
@@ -26,6 +25,23 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Resolve release version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_NAME}" != release/* ]]; then
+            echo "::error::Publish must run from a release/{version} branch."
+            exit 1
+          fi
+
+          release_version="${GITHUB_REF_NAME#release/}"
+          if [[ -z "$release_version" || "$release_version" == *"/"* ]]; then
+            echo "::error::Release branch must use release/{version} format."
+            exit 1
+          fi
+
+          echo "ORG_GRADLE_PROJECT_mavenReleaseVersion=$release_version" >> "$GITHUB_ENV"
+          echo "Resolved Maven release version: $release_version"
+
       - name: Publish to Maven Central
         run: ./gradlew clean publish --no-daemon --stacktrace
         env:
@@ -34,4 +50,3 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKeyId      : ${{ secrets.SIGNING_ID }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PW }}
           ORG_GRADLE_PROJECT_signingInMemoryKey        : ${{ secrets.SIGNING_KEY }}
-          ORG_GRADLE_PROJECT_mavenReleaseVersion       : ${{ vars.RELEASE_VERSION }}
